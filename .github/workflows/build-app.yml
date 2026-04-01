@@ -87,7 +87,6 @@ jobs:
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
           files: |
             release-assets/**/*.exe
             release-assets/**/*.dmg
