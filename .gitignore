@@ -3,5 +3,33 @@ dist/
 out/
 *.class
 
+# macOS
 .DS_Store
+
+# 로그
 *.log
+npm-debug.log*
+
+# 환경변수 / 시크릿
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+
+# 개발 메모 / 내부 기획 문서
+remind.md
+plans/
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 임시 파일
+*.tmp
+*.bak
