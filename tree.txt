@@ -1,4 +1,4 @@
-.
+/Users/ahnch/hwan_projects/db-player
 ├── $lib
 ├── CLAUDE.md
 ├── components.json
@@ -9,12 +9,18 @@
 ├── out
 │   ├── main
 │   │   └── index.js
-│   └── preload
-│       └── index.js
+│   ├── preload
+│   │   └── index.js
+│   └── renderer
+│       ├── assets
+│       │   ├── ic_db_mysql-Cd-PIPBw.png
+│       │   ├── ic_db_postgresql-DoUQf0Nz.png
+│       │   ├── index-C8wOpJDu.css
+│       │   └── index-DBhtKJ0H.js
+│       └── index.html
 ├── package-lock.json
 ├── package.json
 ├── plans
-│   ├── db-analysis.md
 │   ├── mysql-table-create.md
 │   └── ux-improvements.md
 ├── README.md
@@ -200,4 +206,4 @@
     ├── 2026-03-31.md
     └── 2026-04-01.md
 
-37 directories, 164 files
+39 directories, 168 files
