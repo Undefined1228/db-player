@@ -90,7 +90,9 @@ jobs:
         with:
           draft: true
           files: |
-            release-assets/windows/*
-            release-assets/mac/*
+            release-assets/**/*.exe
+            release-assets/**/*.dmg
+            release-assets/**/*.blockmap
+            release-assets/**/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
