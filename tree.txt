@@ -1,0 +1,203 @@
+.
+├── $lib
+├── CLAUDE.md
+├── components.json
+├── dev-app-update.yml
+├── electron-builder.yml
+├── electron.vite.config.ts
+├── eslint.config.mjs
+├── out
+│   ├── main
+│   │   └── index.js
+│   └── preload
+│       └── index.js
+├── package-lock.json
+├── package.json
+├── plans
+│   ├── db-analysis.md
+│   ├── mysql-table-create.md
+│   └── ux-improvements.md
+├── README.md
+├── remind.md
+├── resources
+│   └── icon.png
+├── src
+│   ├── main
+│   │   ├── db
+│   │   │   ├── app-db.ts
+│   │   │   ├── connection-repository.ts
+│   │   │   ├── ddl-builder.ts
+│   │   │   ├── metadata.ts
+│   │   │   └── test-connection.ts
+│   │   └── index.ts
+│   ├── preload
+│   │   ├── index.d.ts
+│   │   └── index.ts
+│   └── renderer
+│       ├── index.html
+│       └── src
+│           ├── App.svelte
+│           ├── assets
+│           │   ├── app.css
+│           │   ├── images
+│           │   └── main.css
+│           ├── components
+│           │   ├── AlterTableDialog.svelte
+│           │   ├── CommandPalette.svelte
+│           │   ├── ConnectionContextMenu.svelte
+│           │   ├── ConnectionDialog.svelte
+│           │   ├── CreateSchemaDialog.svelte
+│           │   ├── CreateTableDialog.svelte
+│           │   ├── DataViewerTab.svelte
+│           │   ├── DDLDialog.svelte
+│           │   ├── DropSchemaDialog.svelte
+│           │   ├── EditSchemaDialog.svelte
+│           │   ├── ErDiagramTab.svelte
+│           │   ├── ExplainTreeNode.svelte
+│           │   ├── ExplainViewer.svelte
+│           │   ├── Header.svelte
+│           │   ├── icons
+│           │   │   ├── DbIcon.svelte
+│           │   │   ├── ic_db_mysql.png
+│           │   │   ├── ic_db_postgresql.png
+│           │   │   ├── ic_db_sqlite.png
+│           │   │   └── index.ts
+│           │   ├── NewTabDialog.svelte
+│           │   ├── QueryEditor.svelte
+│           │   ├── QueryResultViewer.svelte
+│           │   ├── QueryWorkspace.svelte
+│           │   ├── ResultViewer.svelte
+│           │   ├── SchemaObjectContextMenu.svelte
+│           │   ├── SchemaTree.svelte
+│           │   ├── Sidebar.svelte
+│           │   └── ThemeToggle.svelte
+│           ├── env.d.ts
+│           ├── lib
+│           │   ├── actions
+│           │   │   └── sidebar-actions.ts
+│           │   ├── components
+│           │   │   └── ui
+│           │   │       ├── alert-dialog
+│           │   │       │   ├── alert-dialog-action.svelte
+│           │   │       │   ├── alert-dialog-cancel.svelte
+│           │   │       │   ├── alert-dialog-content.svelte
+│           │   │       │   ├── alert-dialog-description.svelte
+│           │   │       │   ├── alert-dialog-footer.svelte
+│           │   │       │   ├── alert-dialog-header.svelte
+│           │   │       │   ├── alert-dialog-overlay.svelte
+│           │   │       │   ├── alert-dialog-portal.svelte
+│           │   │       │   ├── alert-dialog-title.svelte
+│           │   │       │   ├── alert-dialog-trigger.svelte
+│           │   │       │   ├── alert-dialog.svelte
+│           │   │       │   └── index.ts
+│           │   │       ├── button
+│           │   │       │   ├── button.svelte
+│           │   │       │   └── index.ts
+│           │   │       ├── checkbox
+│           │   │       │   ├── checkbox.svelte
+│           │   │       │   └── index.ts
+│           │   │       ├── context-menu
+│           │   │       │   ├── context-menu-checkbox-item.svelte
+│           │   │       │   ├── context-menu-content.svelte
+│           │   │       │   ├── context-menu-group-heading.svelte
+│           │   │       │   ├── context-menu-group.svelte
+│           │   │       │   ├── context-menu-item.svelte
+│           │   │       │   ├── context-menu-label.svelte
+│           │   │       │   ├── context-menu-portal.svelte
+│           │   │       │   ├── context-menu-radio-group.svelte
+│           │   │       │   ├── context-menu-radio-item.svelte
+│           │   │       │   ├── context-menu-separator.svelte
+│           │   │       │   ├── context-menu-shortcut.svelte
+│           │   │       │   ├── context-menu-sub-content.svelte
+│           │   │       │   ├── context-menu-sub-trigger.svelte
+│           │   │       │   ├── context-menu-sub.svelte
+│           │   │       │   ├── context-menu-trigger.svelte
+│           │   │       │   ├── context-menu.svelte
+│           │   │       │   └── index.ts
+│           │   │       ├── dialog
+│           │   │       │   ├── dialog-close.svelte
+│           │   │       │   ├── dialog-content.svelte
+│           │   │       │   ├── dialog-description.svelte
+│           │   │       │   ├── dialog-footer.svelte
+│           │   │       │   ├── dialog-header.svelte
+│           │   │       │   ├── dialog-overlay.svelte
+│           │   │       │   ├── dialog-portal.svelte
+│           │   │       │   ├── dialog-title.svelte
+│           │   │       │   ├── dialog-trigger.svelte
+│           │   │       │   ├── dialog.svelte
+│           │   │       │   └── index.ts
+│           │   │       ├── dropdown-menu
+│           │   │       │   ├── dropdown-menu-checkbox-group.svelte
+│           │   │       │   ├── dropdown-menu-checkbox-item.svelte
+│           │   │       │   ├── dropdown-menu-content.svelte
+│           │   │       │   ├── dropdown-menu-group-heading.svelte
+│           │   │       │   ├── dropdown-menu-group.svelte
+│           │   │       │   ├── dropdown-menu-item.svelte
+│           │   │       │   ├── dropdown-menu-label.svelte
+│           │   │       │   ├── dropdown-menu-portal.svelte
+│           │   │       │   ├── dropdown-menu-radio-group.svelte
+│           │   │       │   ├── dropdown-menu-radio-item.svelte
+│           │   │       │   ├── dropdown-menu-separator.svelte
+│           │   │       │   ├── dropdown-menu-shortcut.svelte
+│           │   │       │   ├── dropdown-menu-sub-content.svelte
+│           │   │       │   ├── dropdown-menu-sub-trigger.svelte
+│           │   │       │   ├── dropdown-menu-sub.svelte
+│           │   │       │   ├── dropdown-menu-trigger.svelte
+│           │   │       │   ├── dropdown-menu.svelte
+│           │   │       │   └── index.ts
+│           │   │       ├── input
+│           │   │       │   ├── index.ts
+│           │   │       │   └── input.svelte
+│           │   │       ├── label
+│           │   │       │   ├── index.ts
+│           │   │       │   └── label.svelte
+│           │   │       ├── radio-group
+│           │   │       │   ├── index.ts
+│           │   │       │   ├── radio-group-item.svelte
+│           │   │       │   └── radio-group.svelte
+│           │   │       ├── resizable
+│           │   │       │   ├── index.ts
+│           │   │       │   ├── resizable-handle.svelte
+│           │   │       │   └── resizable-pane-group.svelte
+│           │   │       ├── select
+│           │   │       │   ├── index.ts
+│           │   │       │   ├── select-content.svelte
+│           │   │       │   ├── select-group-heading.svelte
+│           │   │       │   ├── select-group.svelte
+│           │   │       │   ├── select-item.svelte
+│           │   │       │   ├── select-label.svelte
+│           │   │       │   ├── select-portal.svelte
+│           │   │       │   ├── select-scroll-down-button.svelte
+│           │   │       │   ├── select-scroll-up-button.svelte
+│           │   │       │   ├── select-separator.svelte
+│           │   │       │   ├── select-trigger.svelte
+│           │   │       │   └── select.svelte
+│           │   │       ├── separator
+│           │   │       │   ├── index.ts
+│           │   │       │   └── separator.svelte
+│           │   │       └── tabs
+│           │   │           ├── index.ts
+│           │   │           ├── tabs-content.svelte
+│           │   │           ├── tabs-list.svelte
+│           │   │           ├── tabs-trigger.svelte
+│           │   │           └── tabs.svelte
+│           │   ├── hooks
+│           │   ├── stores
+│           │   │   ├── commands.ts
+│           │   │   ├── connections.ts
+│           │   │   ├── ddl-dialog.ts
+│           │   │   ├── tabs.ts
+│           │   │   └── theme.ts
+│           │   └── utils.ts
+│           └── main.ts
+├── svelte.config.mjs
+├── tree.txt
+├── tsconfig.json
+├── tsconfig.node.json
+├── tsconfig.web.json
+└── work-logs
+    ├── 2026-03-30.md
+    ├── 2026-03-31.md
+    └── 2026-04-01.md
+
+37 directories, 164 files
