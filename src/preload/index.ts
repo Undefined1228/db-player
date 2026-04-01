@@ -58,6 +58,13 @@ const api = {
     ipcRenderer.on('menu:new-tab', () => callback()),
   onMenuCloseTab: (callback: () => void) =>
     ipcRenderer.on('menu:close-tab', () => callback()),
+  checkUpdate: () => ipcRenderer.invoke('app:check-update'),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+  onUpdateAvailable: (callback: (version: string) => void) =>
+    ipcRenderer.on('update:available', (_e, version) => callback(version)),
+  onUpdateDownloaded: (callback: (version: string) => void) =>
+    ipcRenderer.on('update:downloaded', (_e, version) => callback(version)),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
 }
 
 if (process.contextIsolated) {

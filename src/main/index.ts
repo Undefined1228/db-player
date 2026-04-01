@@ -1,4 +1,5 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, net } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import log from 'electron-log'
@@ -267,6 +268,32 @@ app.whenReady().then(() => {
     return getQueryHistory(connectionId)
   })
 
+  ipcMain.handle('app:check-update', async () => {
+    if (process.platform !== 'darwin') return null
+    try {
+      const res = await net.fetch('https://api.github.com/repos/Undefined1228/db-player/releases/latest', {
+        headers: { 'User-Agent': 'db-player-app' }
+      })
+      if (!res.ok) return null
+      const data = await res.json() as { tag_name: string; html_url: string; assets: { name: string; browser_download_url: string }[] }
+      const latestVersion = data.tag_name.replace(/^v/, '')
+      const currentVersion = app.getVersion()
+      const hasUpdate = latestVersion !== currentVersion
+      const dmgAsset = data.assets.find((a: { name: string; browser_download_url: string }) => a.name.endsWith('.dmg'))
+      return {
+        hasUpdate,
+        version: data.tag_name,
+        downloadUrl: dmgAsset?.browser_download_url ?? data.html_url
+      }
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle('shell:open-external', (_event, url: string) => {
+    shell.openExternal(url)
+  })
+
   ipcMain.handle('db:test-connection', async (_event, params: ConnectionParams) => {
     console.log('[main ipc] db:test-connection 수신:', JSON.stringify(params))
     try {
@@ -278,6 +305,20 @@ app.whenReady().then(() => {
       return { success: false, message: err instanceof Error ? err.message : String(err) }
     }
   })
+
+  ipcMain.handle('update:install', () => {
+    autoUpdater.quitAndInstall()
+  })
+
+  if (process.platform === 'win32') {
+    autoUpdater.on('update-available', (info) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('update:available', info.version)
+    })
+    autoUpdater.on('update-downloaded', (info) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('update:downloaded', info.version)
+    })
+    autoUpdater.checkForUpdates().catch((err) => log.error('업데이트 확인 실패:', err))
+  }
 
   log.info('createWindow 호출')
   createWindow()

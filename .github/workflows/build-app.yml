@@ -33,8 +33,7 @@ jobs:
           name: db-player-windows
           path: |
             dist/*.exe
-            dist/*.blockmap
-            dist/*.yml
+            dist/latest.yml
           if-no-files-found: warn
 
   build-mac:
@@ -92,7 +91,6 @@ jobs:
           files: |
             release-assets/**/*.exe
             release-assets/**/*.dmg
-            release-assets/**/*.blockmap
-            release-assets/**/*.yml
+            release-assets/windows/**/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

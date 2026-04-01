@@ -1,4 +1,4 @@
-/Users/ahnch/hwan_projects/db-player
+.
 ├── $lib
 ├── CLAUDE.md
 ├── components.json

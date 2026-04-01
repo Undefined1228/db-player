@@ -110,6 +110,11 @@ interface DbApi {
   >
   onMenuNewTab: (callback: () => void) => void
   onMenuCloseTab: (callback: () => void) => void
+  checkUpdate: () => Promise<{ hasUpdate: boolean; version: string; downloadUrl: string } | null>
+  openExternal: (url: string) => Promise<void>
+  onUpdateAvailable: (callback: (version: string) => void) => void
+  onUpdateDownloaded: (callback: (version: string) => void) => void
+  installUpdate: () => Promise<void>
   getSchemaObjects: (connectionId: number, schemaName: string) => Promise<{
     tables: { name: string; columns: ColumnInfo[]; indexes: string[]; sequences: string[]; foreignKeys: FKInfo[] }[]
     views: { name: string; columns: ColumnInfo[] }[]
