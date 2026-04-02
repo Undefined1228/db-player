@@ -913,7 +913,31 @@ export async function getObjectDDL(
   objectType: 'table' | 'view' | 'matview' | 'function'
 ): Promise<string> {
   const conn = await getConnWithSsh(connectionId)
-  if (conn.dbType !== 'postgresql') throw new Error('PostgreSQL에서만 지원됩니다.')
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      const db = schemaName
+      const quotedRef = `\`${db}\`.\`${objectName}\``
+
+      if (objectType === 'view') {
+        const [rows] = await connection.query<mysql.RowDataPacket[]>(
+          `SHOW CREATE VIEW ${quotedRef}`
+        )
+        return (rows[0]?.['Create View'] as string) ?? ''
+      }
+
+      const [rows] = await connection.query<mysql.RowDataPacket[]>(
+        `SHOW CREATE TABLE ${quotedRef}`
+      )
+      return (rows[0]?.['Create Table'] as string) ?? ''
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+  }
+
+  if (conn.dbType !== 'postgresql') throw new Error('지원하지 않는 DB 유형입니다.')
 
   let client: PgClient | undefined
   try {
