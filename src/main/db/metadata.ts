@@ -1885,6 +1885,32 @@ function normalizeMysqlBlock(block: Record<string, unknown>): ExplainNode {
   return { nodeType: 'Query Block', cost, children, extra: block }
 }
 
+function normalizeMariadbTable(table: Record<string, unknown>): ExplainNode {
+  const cost = table['cost'] != null ? Number(table['cost']) : undefined
+  return {
+    nodeType: ((table['access_type'] as string) ?? 'TABLE').toUpperCase(),
+    cost,
+    rows: table['rows'] as number | undefined,
+    relation: table['table_name'] as string | undefined,
+    children: [],
+    extra: table,
+  }
+}
+
+function normalizeMariadbBlock(block: Record<string, unknown>): ExplainNode {
+  const cost = block['cost'] != null ? Number(block['cost']) : undefined
+  const children: ExplainNode[] = []
+  const nestedLoop = block['nested_loop'] as Record<string, unknown>[] | undefined
+  if (nestedLoop) {
+    for (const item of nestedLoop) {
+      if (item['table']) children.push(normalizeMariadbTable(item['table'] as Record<string, unknown>))
+    }
+  } else if (block['table']) {
+    children.push(normalizeMariadbTable(block['table'] as Record<string, unknown>))
+  }
+  return { nodeType: 'Query Block', cost, children, extra: block }
+}
+
 function pgOidToCategory(oid: number): string {
   if ([16].includes(oid)) return 'boolean'
   if ([20, 21, 23, 26, 700, 701, 790, 1700].includes(oid)) return 'numeric'
@@ -1947,7 +1973,6 @@ export async function explainQuery(connectionId: number, sql: string): Promise<E
         if (client) await client.end().catch(() => {})
       }
     }
-    case 'mariadb':
     case 'mysql': {
       let connection: mysql.Connection | undefined
       try {
@@ -1957,6 +1982,22 @@ export async function explainQuery(connectionId: number, sql: string): Promise<E
         const parsed = JSON.parse(raw) as Record<string, unknown>
         const block = parsed['query_block'] as Record<string, unknown>
         const plan = normalizeMysqlBlock(block)
+        return { ok: true, plan }
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : String(err) }
+      } finally {
+        if (connection) await connection.end().catch(() => {})
+      }
+    }
+    case 'mariadb': {
+      let connection: mysql.Connection | undefined
+      try {
+        connection = await mysql.createConnection(buildMysqlConfig(conn))
+        const [rows] = await connection.query(`EXPLAIN FORMAT=JSON ${sql}`)
+        const raw = (rows as Record<string, unknown>[])[0]['EXPLAIN'] as string
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        const block = parsed['query_block'] as Record<string, unknown>
+        const plan = normalizeMariadbBlock(block)
         return { ok: true, plan }
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : String(err) }
