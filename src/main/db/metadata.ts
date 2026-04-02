@@ -2,7 +2,7 @@ import { Client as PgClient } from 'pg'
 import mysql from 'mysql2/promise'
 import Database from 'better-sqlite3'
 import { getConnectionWithPassword, type ConnectionWithPassword } from './connection-repository'
-import { buildPostgresDDL, buildAlterTableDDL, type CreateTableParams, type AlterTableParams, type CreateTableColumnDef, type CreateTableFKDef } from './ddl-builder'
+import { buildPostgresDDL, buildAlterTableDDL, buildMysqlDDL, buildAlterTableMysqlDDL, type CreateTableParams, type AlterTableParams, type CreateTableColumnDef, type CreateTableFKDef } from './ddl-builder'
 import { openSshTunnel, type SshConfig } from './ssh-tunnel'
 
 async function getConnWithSsh(connectionId: number): Promise<ConnectionWithPassword> {
@@ -316,6 +316,19 @@ export async function getColumnNames(connectionId: number, schemaName: string, t
 
 export async function createTable(connectionId: number, params: CreateTableParams): Promise<void> {
   const conn = await getConnWithSsh(connectionId)
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    const ddl = buildMysqlDDL(params)
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      await connection.query(ddl)
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+    return
+  }
+
   if (conn.dbType !== 'postgresql') throw new Error(`${conn.dbType} 테이블 생성은 아직 지원되지 않습니다.`)
 
   const ddl = buildPostgresDDL(params)
@@ -332,6 +345,27 @@ export async function createTable(connectionId: number, params: CreateTableParam
 
 export async function alterTable(connectionId: number, params: AlterTableParams): Promise<void> {
   const conn = await getConnWithSsh(connectionId)
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    const statements = buildAlterTableMysqlDDL(params)
+    if (statements.length === 0) return
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      await connection.beginTransaction()
+      for (const sql of statements) {
+        await connection.query(sql)
+      }
+      await connection.commit()
+    } catch (err) {
+      if (connection) await connection.rollback().catch(() => {})
+      throw err
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+    return
+  }
+
   if (conn.dbType !== 'postgresql') throw new Error(`${conn.dbType} 테이블 수정은 아직 지원되지 않습니다.`)
 
   const statements = buildAlterTableDDL(params)

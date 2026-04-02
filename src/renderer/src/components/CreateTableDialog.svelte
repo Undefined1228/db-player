@@ -42,7 +42,7 @@
     onUpdate: string
   }
 
-  const TYPE_GROUPS = [
+  const PG_TYPE_GROUPS = [
     { group: '정수', types: ['integer', 'bigint', 'smallint', 'serial', 'bigserial'] },
     { group: '실수', types: ['numeric', 'real', 'double precision'] },
     { group: '문자', types: ['text', 'varchar', 'char'] },
@@ -50,7 +50,19 @@
     { group: '기타', types: ['boolean', 'uuid', 'json', 'jsonb', 'bytea'] }
   ]
 
-  const SIZE_TYPES = new Set(['varchar', 'char', 'numeric'])
+  const MYSQL_TYPE_GROUPS = [
+    { group: '정수', types: ['int', 'bigint', 'smallint', 'tinyint', 'int auto_increment', 'bigint auto_increment'] },
+    { group: '실수', types: ['decimal', 'float', 'double'] },
+    { group: '문자', types: ['varchar', 'char', 'text', 'tinytext', 'mediumtext', 'longtext'] },
+    { group: '날짜/시간', types: ['date', 'time', 'datetime', 'timestamp'] },
+    { group: '기타', types: ['tinyint(1)', 'json', 'blob'] }
+  ]
+
+  const TYPE_GROUPS = $derived((dbType === 'mysql' || dbType === 'mariadb') ? MYSQL_TYPE_GROUPS : PG_TYPE_GROUPS)
+
+  const PG_SIZE_TYPES = new Set(['varchar', 'char', 'numeric'])
+  const MYSQL_SIZE_TYPES = new Set(['varchar', 'char', 'decimal'])
+  const SIZE_TYPES = $derived((dbType === 'mysql' || dbType === 'mariadb') ? MYSQL_SIZE_TYPES : PG_SIZE_TYPES)
 
   const FK_ACTIONS = ['NO ACTION', 'RESTRICT', 'CASCADE', 'SET NULL', 'SET DEFAULT']
 
@@ -198,7 +210,7 @@
     columns[idx].type = type
     if (type === 'varchar') columns[idx].size = '255'
     else if (type === 'char') columns[idx].size = '1'
-    else if (type === 'numeric') columns[idx].size = '10,2'
+    else if (type === 'numeric' || type === 'decimal') columns[idx].size = '10,2'
     else columns[idx].size = ''
     columnErrors.delete(idx)
     columnErrors = new Set(columnErrors)
