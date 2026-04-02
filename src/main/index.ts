@@ -25,6 +25,7 @@ process.on('unhandledRejection', (reason) => {
 import icon from '../../resources/icon.png?asset'
 import { testConnection, type ConnectionParams } from './db/test-connection'
 import { initAppDb, addQueryHistory, getQueryHistory } from './db/app-db'
+import { closeAllSshTunnels, closeSshTunnel } from './db/ssh-tunnel'
 import {
   saveConnection,
   listConnections,
@@ -32,7 +33,7 @@ import {
   getConnectionWithPassword,
   type SaveConnectionParams
 } from './db/connection-repository'
-import { getSchemas, getSchemaObjects, getCompletionSchema, getRoles, createSchema, getSchemaOwner, alterSchema, dropSchema, createTable, alterTable, getTableNames, getColumnNames, getObjectDDL, selectAll, executeDataChanges, executeQuery, executeQueryBatch, cancelQuery, explainQuery, type DataChangesParams, type SelectAllParams } from './db/metadata'
+import { getSchemas, getSchemaObjects, getCompletionSchema, getRoles, createSchema, getSchemaOwner, alterSchema, dropSchema, createTable, alterTable, getTableNames, getColumnNames, getObjectDDL, selectAll, executeDataChanges, executeQuery, executeQueryBatch, cancelQuery, explainQuery, createView, alterView, dropView, createIndex, dropIndex, getSessions, killSession, getLocks, getTableStats, type DataChangesParams, type SelectAllParams, type CreateIndexParams } from './db/metadata'
 import type { CreateTableParams, AlterTableParams } from './db/ddl-builder'
 
 function createWindow(): void {
@@ -222,6 +223,31 @@ app.whenReady().then(() => {
     return { success: true }
   })
 
+  ipcMain.handle('view:create', async (_event, connectionId: number, schemaName: string, viewName: string, selectQuery: string) => {
+    await createView(connectionId, schemaName, viewName, selectQuery)
+    return { success: true }
+  })
+
+  ipcMain.handle('view:alter', async (_event, connectionId: number, schemaName: string, viewName: string, newViewName: string | undefined, newSelectQuery: string | undefined) => {
+    await alterView(connectionId, schemaName, viewName, newViewName, newSelectQuery)
+    return { success: true }
+  })
+
+  ipcMain.handle('view:drop', async (_event, connectionId: number, schemaName: string, viewName: string, cascade: boolean) => {
+    await dropView(connectionId, schemaName, viewName, cascade)
+    return { success: true }
+  })
+
+  ipcMain.handle('index:create', async (_event, connectionId: number, params: CreateIndexParams) => {
+    await createIndex(connectionId, params)
+    return { success: true }
+  })
+
+  ipcMain.handle('index:drop', async (_event, connectionId: number, schemaName: string, indexName: string) => {
+    await dropIndex(connectionId, schemaName, indexName)
+    return { success: true }
+  })
+
   ipcMain.handle('db:object-ddl', async (_event, connectionId: number, schemaName: string, objectName: string, objectType: string) => {
     return getObjectDDL(connectionId, schemaName, objectName, objectType as 'table' | 'view' | 'matview' | 'function')
   })
@@ -268,6 +294,8 @@ app.whenReady().then(() => {
     return getQueryHistory(connectionId)
   })
 
+  ipcMain.handle('app:version', () => app.getVersion())
+
   ipcMain.handle('app:check-update', async () => {
     if (process.platform !== 'darwin') return null
     try {
@@ -306,6 +334,26 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle('ssh:close-tunnel', (_event, connectionId: number) => {
+    closeSshTunnel(connectionId)
+  })
+
+  ipcMain.handle('monitor:sessions', (_event, connectionId: number) => {
+    return getSessions(connectionId)
+  })
+
+  ipcMain.handle('monitor:kill-session', (_event, connectionId: number, sessionId: number, mode: 'cancel' | 'terminate') => {
+    return killSession(connectionId, sessionId, mode)
+  })
+
+  ipcMain.handle('monitor:locks', (_event, connectionId: number) => {
+    return getLocks(connectionId)
+  })
+
+  ipcMain.handle('monitor:table-stats', (_event, connectionId: number) => {
+    return getTableStats(connectionId)
+  })
+
   ipcMain.handle('update:install', () => {
     autoUpdater.quitAndInstall()
   })
@@ -333,6 +381,8 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+app.on('before-quit', closeAllSshTunnels)
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()

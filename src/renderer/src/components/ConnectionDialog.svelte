@@ -5,6 +5,7 @@
   import { Label } from '$lib/components/ui/label'
   import { Button } from '$lib/components/ui/button'
   import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group'
+  import { Checkbox } from '$lib/components/ui/checkbox'
   import { Loader2 } from 'lucide-svelte'
   import { loadConnections } from '$lib/stores/connections'
 
@@ -16,25 +17,35 @@
     initialData?: ConnectionWithPassword | null
   } = $props()
 
-  type DbType = 'mysql' | 'postgresql' | 'sqlite'
+  type DbType = 'mysql' | 'mariadb' | 'postgresql' | 'sqlite'
   type InputMode = 'fields' | 'url'
 
   const dbTypes: { value: DbType; label: string; defaultPort: number; protocol: string }[] = [
-    { value: 'mysql', label: 'MySQL', defaultPort: 3306, protocol: 'mysql' },
     { value: 'postgresql', label: 'PostgreSQL', defaultPort: 5432, protocol: 'postgresql' },
+    { value: 'mysql', label: 'MySQL', defaultPort: 3306, protocol: 'mysql' },
+    { value: 'mariadb', label: 'MariaDB', defaultPort: 3306, protocol: 'mysql' },
     { value: 'sqlite', label: 'SQLite', defaultPort: 0, protocol: 'sqlite' }
   ]
 
   let name = $state('')
-  let dbType = $state<DbType>('mysql')
+  let dbType = $state<DbType>('postgresql')
   let inputMode = $state<InputMode>('fields')
   let host = $state('localhost')
-  let port = $state(3306)
+  let port = $state(5432)
   let database = $state('')
   let username = $state('')
   let password = $state('')
   let filePath = $state('')
   let url = $state('')
+
+  let sshEnabled = $state(false)
+  let sshHost = $state('')
+  let sshPort = $state(22)
+  let sshUsername = $state('')
+  let sshAuthMethod = $state<'password' | 'key'>('password')
+  let sshPassword = $state('')
+  let sshPrivateKey = $state('')
+  let sshPassphrase = $state('')
 
   let errors = $state<Set<string>>(new Set())
   let testing = $state(false)
@@ -43,15 +54,23 @@
 
   function resetForm(): void {
     name = ''
-    dbType = 'mysql'
+    dbType = 'postgresql'
     inputMode = 'fields'
     host = 'localhost'
-    port = 3306
+    port = 5432
     database = ''
     username = ''
     password = ''
     filePath = ''
     url = ''
+    sshEnabled = false
+    sshHost = ''
+    sshPort = 22
+    sshUsername = ''
+    sshAuthMethod = 'password'
+    sshPassword = ''
+    sshPrivateKey = ''
+    sshPassphrase = ''
     errors = new Set()
     testResult = null
   }
@@ -67,6 +86,14 @@
     password = data.password
     filePath = data.filePath ?? ''
     url = data.url ?? ''
+    sshEnabled = (data as any).sshEnabled ?? false
+    sshHost = (data as any).sshHost ?? ''
+    sshPort = (data as any).sshPort ?? 22
+    sshUsername = (data as any).sshUsername ?? ''
+    sshAuthMethod = ((data as any).sshAuthMethod ?? 'password') as 'password' | 'key'
+    sshPassword = (data as any).sshPassword ?? ''
+    sshPrivateKey = (data as any).sshPrivateKey ?? ''
+    sshPassphrase = (data as any).sshPassphrase ?? ''
     errors = new Set()
     testResult = null
   }
@@ -129,6 +156,13 @@
       if (!port) newErrors.add('port')
     }
 
+    if (sshEnabled) {
+      if (!sshHost.trim()) newErrors.add('sshHost')
+      if (!sshUsername.trim()) newErrors.add('sshUsername')
+      if (sshAuthMethod === 'password' && !sshPassword) newErrors.add('sshPassword')
+      if (sshAuthMethod === 'key' && !sshPrivateKey.trim()) newErrors.add('sshPrivateKey')
+    }
+
     errors = newErrors
     return newErrors.size === 0
   }
@@ -143,7 +177,15 @@
       username: username || undefined,
       password: password || undefined,
       filePath: filePath || undefined,
-      url: url || undefined
+      url: url || undefined,
+      sshEnabled: sshEnabled || undefined,
+      sshHost: sshEnabled ? sshHost || undefined : undefined,
+      sshPort: sshEnabled ? sshPort || undefined : undefined,
+      sshUsername: sshEnabled ? sshUsername || undefined : undefined,
+      sshAuthMethod: sshEnabled ? sshAuthMethod : undefined,
+      sshPassword: sshEnabled && sshAuthMethod === 'password' ? sshPassword || undefined : undefined,
+      sshPrivateKey: sshEnabled && sshAuthMethod === 'key' ? sshPrivateKey || undefined : undefined,
+      sshPassphrase: sshEnabled && sshAuthMethod === 'key' ? sshPassphrase || undefined : undefined
     }
   }
 
@@ -309,6 +351,98 @@
           <div class="col-span-3 rounded-md border border-border bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
             {generatedUrl}
           </div>
+        </div>
+      {/if}
+
+      {#if !isSqlite}
+        <div class="border-t border-border pt-3 mt-1">
+          <div class="grid grid-cols-4 items-center gap-4">
+            <Label class="text-right text-xs">SSH 터널</Label>
+            <div class="col-span-3 flex items-center gap-2">
+              <Checkbox bind:checked={sshEnabled} id="ssh-enabled" />
+              <Label for="ssh-enabled" class="text-xs font-normal cursor-pointer">SSH 터널링 사용</Label>
+            </div>
+          </div>
+
+          {#if sshEnabled}
+            <div class="mt-3 grid gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right text-xs">SSH 호스트 *</Label>
+                <Input
+                  bind:value={sshHost}
+                  oninput={() => clearError('sshHost')}
+                  placeholder="ssh.example.com"
+                  class="col-span-3 h-8 text-xs {errorClass('sshHost')}"
+                />
+              </div>
+
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right text-xs">SSH 포트</Label>
+                <Input
+                  type="number"
+                  bind:value={sshPort}
+                  class="col-span-3 h-8 text-xs"
+                />
+              </div>
+
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right text-xs">SSH 사용자명 *</Label>
+                <Input
+                  bind:value={sshUsername}
+                  oninput={() => clearError('sshUsername')}
+                  placeholder="ubuntu"
+                  class="col-span-3 h-8 text-xs {errorClass('sshUsername')}"
+                />
+              </div>
+
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right text-xs">인증 방식</Label>
+                <RadioGroup value={sshAuthMethod} onValueChange={(v) => { if (v) sshAuthMethod = v as 'password' | 'key' }} class="col-span-3 flex gap-4">
+                  <div class="flex items-center gap-1.5">
+                    <RadioGroupItem value="password" id="ssh-auth-password" />
+                    <Label for="ssh-auth-password" class="text-xs font-normal">비밀번호</Label>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <RadioGroupItem value="key" id="ssh-auth-key" />
+                    <Label for="ssh-auth-key" class="text-xs font-normal">개인키</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {#if sshAuthMethod === 'password'}
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label class="text-right text-xs">SSH 비밀번호 *</Label>
+                  <Input
+                    type="password"
+                    bind:value={sshPassword}
+                    oninput={() => clearError('sshPassword')}
+                    class="col-span-3 h-8 text-xs {errorClass('sshPassword')}"
+                  />
+                </div>
+              {:else}
+                <div class="grid grid-cols-4 items-start gap-4">
+                  <Label class="text-right text-xs pt-2">개인키 *</Label>
+                  <textarea
+                    bind:value={sshPrivateKey}
+                    oninput={() => clearError('sshPrivateKey')}
+                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."
+                    rows={5}
+                    class="col-span-3 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-mono resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring {errorClass('sshPrivateKey')}"
+                  ></textarea>
+                </div>
+
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label class="text-right text-xs">키 패스프레이즈</Label>
+                  <Input
+                    type="password"
+                    bind:value={sshPassphrase}
+                    placeholder="(선택사항)"
+                    class="col-span-3 h-8 text-xs"
+                  />
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

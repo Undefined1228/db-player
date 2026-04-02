@@ -6,6 +6,7 @@
   import DataViewerTab from './DataViewerTab.svelte'
   import QueryEditor from './QueryEditor.svelte'
   import ErDiagramTab from './ErDiagramTab.svelte'
+  import MonitorTab from './MonitorTab.svelte'
 
   const isMac = navigator.platform.toUpperCase().includes('MAC')
   const modKey = isMac ? '⌘' : 'Ctrl'
@@ -96,6 +97,11 @@
             <ErDiagramTab
               connectionId={activeTab.connectionId}
               schemaName={activeTab.schemaName}
+            />
+          {:else if activeTab.type === 'monitor'}
+            <MonitorTab
+              connectionId={activeTab.connectionId}
+              dbType={activeTab.dbType}
             />
           {:else}
             <QueryEditor

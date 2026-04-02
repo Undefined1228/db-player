@@ -4,11 +4,13 @@
 
   let { onNewTab }: { onNewTab: () => void } = $props()
 
+  let appVersion = $state<string | null>(null)
   let updateInfo = $state<{ version: string; downloadUrl: string } | null>(null)
   let winUpdateVersion = $state<string | null>(null)
   let winUpdateReady = $state<string | null>(null)
 
   $effect(() => {
+    window.api.getAppVersion().then((v) => { appVersion = v })
     window.api.checkUpdate().then((result) => {
       if (result?.hasUpdate) {
         updateInfo = { version: result.version, downloadUrl: result.downloadUrl }
@@ -58,5 +60,8 @@
       New Query
     </button>
     <ThemeToggle />
+    {#if appVersion}
+      <span class="select-none px-2 text-[11px] text-muted-foreground/60">v{appVersion}</span>
+    {/if}
   </div>
 </div>

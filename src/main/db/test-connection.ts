@@ -1,9 +1,10 @@
 import mysql from 'mysql2/promise'
 import { Client as PgClient } from 'pg'
 import Database from 'better-sqlite3'
+import { openSshTunnel, closeSshTunnel } from './ssh-tunnel'
 
 export interface ConnectionParams {
-  dbType: 'mysql' | 'postgresql' | 'sqlite'
+  dbType: 'mysql' | 'mariadb' | 'postgresql' | 'sqlite'
   inputMode: 'fields' | 'url'
   host?: string
   port?: number
@@ -12,26 +13,65 @@ export interface ConnectionParams {
   password?: string
   filePath?: string
   url?: string
+  sshEnabled?: boolean
+  sshHost?: string
+  sshPort?: number
+  sshUsername?: string
+  sshAuthMethod?: 'password' | 'key'
+  sshPassword?: string
+  sshPrivateKey?: string
+  sshPassphrase?: string
 }
 
+const TEMP_TUNNEL_ID = -1
+
 export async function testConnection(params: ConnectionParams): Promise<{ success: boolean; message: string }> {
-  console.log('[main] testConnection 호출:', JSON.stringify(params))
+  console.log('[main] testConnection 호출:', JSON.stringify({ ...params, password: params.password ? '***' : undefined, sshPassword: params.sshPassword ? '***' : undefined, sshPrivateKey: params.sshPrivateKey ? '***' : undefined }))
   const start = Date.now()
   try {
+    let effectiveParams = params
+
+    if (params.sshEnabled && params.dbType !== 'sqlite') {
+      if (!params.sshHost || !params.sshUsername) {
+        return { success: false, message: 'SSH 호스트와 사용자명은 필수입니다.' }
+      }
+      const remoteHost = params.host ?? '127.0.0.1'
+      const remotePort = params.port ?? (['mysql', 'mariadb'].includes(params.dbType) ? 3306 : 5432)
+      const { localPort } = await openSshTunnel(
+        TEMP_TUNNEL_ID,
+        {
+          host: params.sshHost,
+          port: params.sshPort ?? 22,
+          username: params.sshUsername,
+          authMethod: params.sshAuthMethod ?? 'password',
+          password: params.sshPassword,
+          privateKey: params.sshPrivateKey,
+          passphrase: params.sshPassphrase,
+        },
+        remoteHost,
+        remotePort
+      )
+      effectiveParams = { ...params, host: '127.0.0.1', port: localPort }
+    }
+
     let result: { success: boolean; message: string }
     switch (params.dbType) {
       case 'mysql':
-        result = await testMysql(params)
+        result = await testMysql(effectiveParams)
+        break
+      case 'mariadb':
+        result = await testMariadb(effectiveParams)
         break
       case 'postgresql':
-        result = await testPostgresql(params)
+        result = await testPostgresql(effectiveParams)
         break
       case 'sqlite':
-        result = testSqlite(params)
+        result = testSqlite(effectiveParams)
         break
       default:
         return { success: false, message: '지원하지 않는 DB 유형입니다.' }
     }
+
     const elapsed = Date.now() - start
     if (result.success) {
       result.message = `${result.message} (${elapsed}ms)`
@@ -42,6 +82,10 @@ export async function testConnection(params: ConnectionParams): Promise<{ succes
     console.error('[main] testConnection 에러 원본:', err)
     const message = extractErrorMessage(err)
     return { success: false, message }
+  } finally {
+    if (params.sshEnabled && params.dbType !== 'sqlite') {
+      closeSshTunnel(TEMP_TUNNEL_ID)
+    }
   }
 }
 
@@ -88,6 +132,18 @@ async function testMysql(params: ConnectionParams): Promise<{ success: boolean; 
     const [rows] = await connection.query('SELECT VERSION() as version')
     const version = (rows as { version: string }[])[0]?.version ?? '알 수 없음'
     return { success: true, message: `연결 성공 — MySQL ${version}` }
+  } finally {
+    if (connection) await connection.end().catch(() => {})
+  }
+}
+
+async function testMariadb(params: ConnectionParams): Promise<{ success: boolean; message: string }> {
+  let connection: mysql.Connection | undefined
+  try {
+    connection = await mysql.createConnection(buildMysqlConfig(params))
+    const [rows] = await connection.query('SELECT VERSION() as version')
+    const version = (rows as { version: string }[])[0]?.version ?? '알 수 없음'
+    return { success: true, message: `연결 성공 — MariaDB ${version}` }
   } finally {
     if (connection) await connection.end().catch(() => {})
   }

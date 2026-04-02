@@ -13,10 +13,18 @@ export interface ConnectionRecord {
   url: string | null
   createdAt: string
   updatedAt: string
+  sshEnabled: boolean
+  sshHost: string | null
+  sshPort: number | null
+  sshUsername: string | null
+  sshAuthMethod: 'password' | 'key'
 }
 
 export interface ConnectionWithPassword extends ConnectionRecord {
   password: string
+  sshPassword: string
+  sshPrivateKey: string
+  sshPassphrase: string
 }
 
 export interface SaveConnectionParams {
@@ -31,37 +39,65 @@ export interface SaveConnectionParams {
   password?: string
   filePath?: string
   url?: string
+  sshEnabled?: boolean
+  sshHost?: string
+  sshPort?: number
+  sshUsername?: string
+  sshAuthMethod?: 'password' | 'key'
+  sshPassword?: string
+  sshPrivateKey?: string
+  sshPassphrase?: string
 }
 
 export function saveConnection(params: SaveConnectionParams): ConnectionRecord {
   const db = getDb()
   const encrypted = encryptPassword(params.password ?? '')
+  const sshPasswordEncrypted = encryptPassword(params.sshPassword ?? '')
+  const sshPrivateKeyEncrypted = encryptPassword(params.sshPrivateKey ?? '')
+  const sshPassphraseEncrypted = encryptPassword(params.sshPassphrase ?? '')
 
   if (params.id) {
     db.prepare(`
       UPDATE connections SET
         name = ?, db_type = ?, input_mode = ?, host = ?, port = ?,
         database_name = ?, username = ?, password_encrypted = ?,
-        file_path = ?, url = ?, updated_at = datetime('now')
+        file_path = ?, url = ?,
+        ssh_enabled = ?, ssh_host = ?, ssh_port = ?, ssh_username = ?,
+        ssh_auth_method = ?, ssh_password_encrypted = ?,
+        ssh_private_key_encrypted = ?, ssh_passphrase_encrypted = ?,
+        updated_at = datetime('now')
       WHERE id = ?
     `).run(
       params.name, params.dbType, params.inputMode,
       params.host ?? null, params.port ?? null,
       params.database ?? null, params.username ?? null, encrypted,
       params.filePath ?? null, params.url ?? null,
+      params.sshEnabled ? 1 : 0,
+      params.sshHost ?? null, params.sshPort ?? null, params.sshUsername ?? null,
+      params.sshAuthMethod ?? 'password',
+      sshPasswordEncrypted, sshPrivateKeyEncrypted, sshPassphraseEncrypted,
       params.id
     )
     return getConnection(params.id)!
   }
 
   const result = db.prepare(`
-    INSERT INTO connections (name, db_type, input_mode, host, port, database_name, username, password_encrypted, file_path, url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO connections (
+      name, db_type, input_mode, host, port, database_name, username, password_encrypted,
+      file_path, url,
+      ssh_enabled, ssh_host, ssh_port, ssh_username, ssh_auth_method,
+      ssh_password_encrypted, ssh_private_key_encrypted, ssh_passphrase_encrypted
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     params.name, params.dbType, params.inputMode,
     params.host ?? null, params.port ?? null,
     params.database ?? null, params.username ?? null, encrypted,
-    params.filePath ?? null, params.url ?? null
+    params.filePath ?? null, params.url ?? null,
+    params.sshEnabled ? 1 : 0,
+    params.sshHost ?? null, params.sshPort ?? null, params.sshUsername ?? null,
+    params.sshAuthMethod ?? 'password',
+    sshPasswordEncrypted, sshPrivateKeyEncrypted, sshPassphraseEncrypted
   )
   return getConnection(result.lastInsertRowid as number)!
 }
@@ -79,7 +115,10 @@ export function getConnectionWithPassword(id: number): ConnectionWithPassword | 
   if (!row) return undefined
   const record = mapRow(row)
   const password = decryptPassword(row.password_encrypted as Buffer)
-  return { ...record, password }
+  const sshPassword = decryptPassword(row.ssh_password_encrypted as Buffer)
+  const sshPrivateKey = decryptPassword(row.ssh_private_key_encrypted as Buffer)
+  const sshPassphrase = decryptPassword(row.ssh_passphrase_encrypted as Buffer)
+  return { ...record, password, sshPassword, sshPrivateKey, sshPassphrase }
 }
 
 export function listConnections(): ConnectionRecord[] {
@@ -106,6 +145,11 @@ function mapRow(row: Record<string, unknown>): ConnectionRecord {
     filePath: row.file_path as string | null,
     url: row.url as string | null,
     createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string
+    updatedAt: row.updated_at as string,
+    sshEnabled: (row.ssh_enabled as number) === 1,
+    sshHost: row.ssh_host as string | null,
+    sshPort: row.ssh_port as number | null,
+    sshUsername: row.ssh_username as string | null,
+    sshAuthMethod: (row.ssh_auth_method as 'password' | 'key') ?? 'password',
   }
 }

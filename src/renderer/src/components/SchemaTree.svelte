@@ -32,10 +32,16 @@
     onUpdate: string
   }
 
+  interface IndexInfo {
+    name: string
+    unique: boolean
+    columns: string[]
+  }
+
   interface TableInfo {
     name: string
     columns: ColumnInfo[]
-    indexes: string[]
+    indexes: IndexInfo[]
     sequences: string[]
     foreignKeys: FKInfo[]
   }
@@ -48,7 +54,7 @@
   interface MatViewInfo {
     name: string
     columns: ColumnInfo[]
-    indexes: string[]
+    indexes: IndexInfo[]
   }
 
   interface SchemaObjects {
@@ -65,7 +71,12 @@
     active,
     onSelect,
     onCreateTable,
-    onAlterTable
+    onAlterTable,
+    onCreateView,
+    onAlterView,
+    onDropView,
+    onCreateIndex,
+    onDropIndex
   }: {
     connectionId: number
     dbType: string
@@ -74,6 +85,11 @@
     onSelect: () => void
     onCreateTable: () => void
     onAlterTable: (info: { tableName: string; columns: ColumnInfo[]; foreignKeys: FKInfo[] }) => void
+    onCreateView: () => void
+    onAlterView: (info: { viewName: string }) => void
+    onDropView: (viewName: string) => void
+    onCreateIndex: (info: { tableName: string; columns: ColumnInfo[] }) => void
+    onDropIndex: (info: { tableName: string; indexName: string }) => void
   } = $props()
 
   let objects = $state<SchemaObjects | null>(null)
@@ -205,13 +221,27 @@
   </div>
 {/snippet}
 
-{#snippet subList(items: string[], icon: typeof FileKey)}
-  {#each items as item}
-    <div class="flex items-center gap-1 px-2 py-0.5">
-      <svelte:component this={icon} class="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-      <span class="truncate text-[11px] text-foreground">{item}</span>
-    </div>
-  {/each}
+{#snippet indexRow(idx: IndexInfo, tableName: string)}
+  <ContextMenu.Root>
+    <ContextMenu.Trigger>
+      <div class="flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-accent/60 cursor-default">
+        <FileKey class="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+        <span class="truncate text-[11px] text-foreground">{idx.name}</span>
+        {#if idx.unique}
+          <span class="shrink-0 rounded bg-amber-500/15 px-1 text-[8px] font-medium text-amber-600 dark:text-amber-400">UNIQUE</span>
+        {/if}
+        <span class="shrink-0 text-[9px] text-muted-foreground">({idx.columns.join(', ')})</span>
+      </div>
+    </ContextMenu.Trigger>
+    <ContextMenu.Content class="w-36">
+      <ContextMenu.Item
+        class="text-destructive focus:text-destructive"
+        onclick={() => onDropIndex({ tableName, indexName: idx.name })}
+      >
+        인덱스 삭제
+      </ContextMenu.Item>
+    </ContextMenu.Content>
+  </ContextMenu.Root>
 {/snippet}
 
 {#if loadingObjects}
@@ -276,9 +306,83 @@
               </SchemaObjectContextMenu>
               {#if expandedNodes[tKey]}
                 <div class="ml-3 border-l border-border pl-1">
-                  {#each table.columns as col}
-                    {@render columnRow(col)}
-                  {/each}
+                  <!-- Columns -->
+                  <div>
+                    <button
+                      class="flex w-full items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent"
+                      onclick={() => toggle(`${tKey}:cols`)}
+                    >
+                      {@render chevron(`${tKey}:cols`)}
+                      <Columns3 class="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                      <span class="text-[10px] text-muted-foreground">Columns ({table.columns.length})</span>
+                    </button>
+                    {#if expandedNodes[`${tKey}:cols`]}
+                      <div class="ml-3 border-l border-border pl-1">
+                        {#each table.columns as col}
+                          {@render columnRow(col)}
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+
+                  <!-- Foreign Keys -->
+                  {#if table.foreignKeys.length > 0}
+                    <div>
+                      <button
+                        class="flex w-full items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent"
+                        onclick={() => toggle(`${tKey}:fks`)}
+                      >
+                        {@render chevron(`${tKey}:fks`)}
+                        <FileKey class="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                        <span class="text-[10px] text-muted-foreground">Foreign Keys ({table.foreignKeys.length})</span>
+                      </button>
+                      {#if expandedNodes[`${tKey}:fks`]}
+                        <div class="ml-3 border-l border-border pl-1">
+                          {#each table.foreignKeys as fk}
+                            <div class="flex flex-col px-2 py-0.5 gap-0.5">
+                              <div class="flex items-center gap-1">
+                                <FileKey class="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                                <span class="truncate text-[11px] text-foreground font-medium">{fk.constraintName}</span>
+                              </div>
+                              <span class="text-[10px] text-muted-foreground pl-3.5 truncate">
+                                ({fk.localColumns.join(', ')}) → {fk.refSchema}.{fk.refTable}({fk.refColumns.join(', ')})
+                              </span>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+
+                  <!-- Indexes -->
+                  {#if table.indexes.length > 0 || dbType === 'postgresql'}
+                    <div>
+                      <ContextMenu.Root>
+                        <ContextMenu.Trigger>
+                          <button
+                            class="flex w-full items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent"
+                            onclick={() => toggle(`${tKey}:idx`)}
+                          >
+                            {@render chevron(`${tKey}:idx`)}
+                            <FileKey class="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                            <span class="text-[10px] text-muted-foreground">Indexes ({table.indexes.length})</span>
+                          </button>
+                        </ContextMenu.Trigger>
+                        {#if dbType === 'postgresql'}
+                          <ContextMenu.Content class="w-36">
+                            <ContextMenu.Item onclick={() => onCreateIndex({ tableName: table.name, columns: table.columns })}>인덱스 생성</ContextMenu.Item>
+                          </ContextMenu.Content>
+                        {/if}
+                      </ContextMenu.Root>
+                      {#if expandedNodes[`${tKey}:idx`]}
+                        <div class="ml-3 border-l border-border pl-1">
+                          {#each table.indexes as idx}
+                            {@render indexRow(idx, table.name)}
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
                 </div>
               {/if}
             </div>
@@ -288,13 +392,22 @@
     </div>
   {/if}
 
-  {#if objects.views.length > 0}
+  {#if objects.views.length > 0 || dbType === 'postgresql'}
     <div>
-      <button class="flex w-full items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent" onclick={() => toggle('views')}>
-        {@render chevron('views')}
-        <Eye class="h-3 w-3 shrink-0 text-muted-foreground" />
-        <span class="text-[11px] text-muted-foreground">Views ({objects.views.length})</span>
-      </button>
+      <ContextMenu.Root>
+        <ContextMenu.Trigger>
+          <button class="flex w-full items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent" onclick={() => toggle('views')}>
+            {@render chevron('views')}
+            <Eye class="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span class="text-[11px] text-muted-foreground">Views ({objects.views.length})</span>
+          </button>
+        </ContextMenu.Trigger>
+        {#if dbType === 'postgresql'}
+          <ContextMenu.Content class="w-40">
+            <ContextMenu.Item onclick={onCreateView}>뷰 생성</ContextMenu.Item>
+          </ContextMenu.Content>
+        {/if}
+      </ContextMenu.Root>
       {#if expandedNodes['views']}
         <div class="ml-3 border-l border-border pl-1">
           {#each objects.views as view}
@@ -306,8 +419,9 @@
                 onSelectData={() => selectData({ connectionId, dbType, schemaName, objectName: view.name, objectType: 'view' })}
                 onOpenEditor={() => openSqlEditor({ connectionId, dbType, schemaName, objectName: view.name, objectType: 'view' })}
                 onViewDDL={() => viewDDL({ connectionId, dbType, schemaName, objectName: view.name, objectType: 'view' })}
-                onDrop={() => dropObject({ connectionId, dbType, schemaName, objectName: view.name, objectType: 'view' })}
+                onDrop={() => onDropView(view.name)}
                 onRefresh={reloadObjects}
+                onAlter={() => onAlterView({ viewName: view.name })}
               >
                 <div
                   class="flex w-full items-center rounded-md px-1 py-0.5 transition-colors
@@ -384,7 +498,9 @@
                       </button>
                       {#if expandedNodes[`${mvKey}:idx`]}
                         <div class="ml-3 border-l border-border pl-1">
-                          {@render subList(mv.indexes, FileKey)}
+                          {#each mv.indexes as idx}
+                            {@render indexRow(idx, mv.name)}
+                          {/each}
                         </div>
                       {/if}
                     </div>

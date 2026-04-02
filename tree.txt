@@ -21,6 +21,12 @@
 ├── package-lock.json
 ├── package.json
 ├── plans
+│   ├── db-features
+│   │   ├── mariadb.md
+│   │   ├── mysql.md
+│   │   ├── overview.md
+│   │   ├── postgresql.md
+│   │   └── sqlite.md
 │   ├── mysql-table-create.md
 │   └── ux-improvements.md
 ├── README.md
@@ -34,6 +40,7 @@
 │   │   │   ├── connection-repository.ts
 │   │   │   ├── ddl-builder.ts
 │   │   │   ├── metadata.ts
+│   │   │   ├── ssh-tunnel.ts
 │   │   │   └── test-connection.ts
 │   │   └── index.ts
 │   ├── preload
@@ -54,6 +61,7 @@
 │           │   ├── ConnectionDialog.svelte
 │           │   ├── CreateSchemaDialog.svelte
 │           │   ├── CreateTableDialog.svelte
+│           │   ├── CreateViewDialog.svelte
 │           │   ├── DataViewerTab.svelte
 │           │   ├── DDLDialog.svelte
 │           │   ├── DropSchemaDialog.svelte
@@ -64,6 +72,7 @@
 │           │   ├── Header.svelte
 │           │   ├── icons
 │           │   │   ├── DbIcon.svelte
+│           │   │   ├── ic_db_mariadb.png
 │           │   │   ├── ic_db_mysql.png
 │           │   │   ├── ic_db_postgresql.png
 │           │   │   ├── ic_db_sqlite.png
@@ -200,10 +209,11 @@
 ├── tree.txt
 ├── tsconfig.json
 ├── tsconfig.node.json
+├── tsconfig.node.tsbuildinfo
 ├── tsconfig.web.json
 └── work-logs
     ├── 2026-03-30.md
     ├── 2026-03-31.md
     └── 2026-04-01.md
 
-39 directories, 168 files
+40 directories, 177 files

@@ -13,10 +13,18 @@ interface ConnectionRecord {
   url: string | null
   createdAt: string
   updatedAt: string
+  sshEnabled: boolean
+  sshHost: string | null
+  sshPort: number | null
+  sshUsername: string | null
+  sshAuthMethod: 'password' | 'key'
 }
 
 interface ConnectionWithPassword extends ConnectionRecord {
   password: string
+  sshPassword: string
+  sshPrivateKey: string
+  sshPassphrase: string
 }
 
 interface ColumnInfo {
@@ -56,6 +64,40 @@ interface QueryHistoryRecord {
   executedAt: string
   executionTime: number
   success: number
+}
+
+interface SessionRow {
+  id: number
+  user: string
+  database: string
+  state: string
+  waitEventType: string | null
+  waitEvent: string | null
+  durationSec: number | null
+  query: string | null
+}
+
+interface LockRow {
+  waitingId: number
+  waitingUser: string
+  blockingId: number
+  blockingUser: string
+  lockType: string
+  tableName: string | null
+  waitingQuery: string | null
+  blockingQuery: string | null
+}
+
+interface TableStatRow {
+  schema: string
+  table: string
+  totalBytes: number
+  tableBytes: number
+  indexBytes: number
+  estimatedRows: number
+  deadTuples?: number
+  lastVacuum?: string | null
+  lastAutovacuum?: string | null
 }
 
 interface DbApi {
@@ -110,15 +152,26 @@ interface DbApi {
   >
   onMenuNewTab: (callback: () => void) => void
   onMenuCloseTab: (callback: () => void) => void
+  getAppVersion: () => Promise<string>
   checkUpdate: () => Promise<{ hasUpdate: boolean; version: string; downloadUrl: string } | null>
   openExternal: (url: string) => Promise<void>
   onUpdateAvailable: (callback: (version: string) => void) => void
   onUpdateDownloaded: (callback: (version: string) => void) => void
   installUpdate: () => Promise<void>
+  closeSSHTunnel: (connectionId: number) => Promise<void>
+  createView: (connectionId: number, schemaName: string, viewName: string, selectQuery: string) => Promise<{ success: true }>
+  alterView: (connectionId: number, schemaName: string, viewName: string, newViewName: string | undefined, newSelectQuery: string | undefined) => Promise<{ success: true }>
+  dropView: (connectionId: number, schemaName: string, viewName: string, cascade: boolean) => Promise<{ success: true }>
+  createIndex: (connectionId: number, params: Record<string, unknown>) => Promise<{ success: true }>
+  dropIndex: (connectionId: number, schemaName: string, indexName: string) => Promise<{ success: true }>
+  getSessions: (connectionId: number) => Promise<SessionRow[]>
+  killSession: (connectionId: number, sessionId: number, mode: 'cancel' | 'terminate') => Promise<{ success: boolean }>
+  getLocks: (connectionId: number) => Promise<LockRow[]>
+  getTableStats: (connectionId: number) => Promise<TableStatRow[]>
   getSchemaObjects: (connectionId: number, schemaName: string) => Promise<{
-    tables: { name: string; columns: ColumnInfo[]; indexes: string[]; sequences: string[]; foreignKeys: FKInfo[] }[]
+    tables: { name: string; columns: ColumnInfo[]; indexes: { name: string; unique: boolean; columns: string[] }[]; sequences: string[]; foreignKeys: FKInfo[] }[]
     views: { name: string; columns: ColumnInfo[] }[]
-    materialized_views: { name: string; columns: ColumnInfo[]; indexes: string[] }[]
+    materialized_views: { name: string; columns: ColumnInfo[]; indexes: { name: string; unique: boolean; columns: string[] }[] }[]
     functions: string[]
   }>
 }

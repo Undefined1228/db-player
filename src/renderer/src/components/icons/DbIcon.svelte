@@ -2,11 +2,13 @@
   import { Database } from 'lucide-svelte'
   import mysqlIcon from './ic_db_mysql.png'
   import postgresqlIcon from './ic_db_postgresql.png'
+  import mariadbIcon from './ic_db_mariadb.png'
 
   let { dbType, class: className = '' }: { dbType: string; class?: string } = $props()
 
   const iconMap: Record<string, string> = {
     mysql: mysqlIcon,
+    mariadb: mariadbIcon,
     postgresql: postgresqlIcon
   }
 
