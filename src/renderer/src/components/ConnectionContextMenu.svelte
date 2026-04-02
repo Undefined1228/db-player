@@ -30,13 +30,17 @@
       {#if dbType === 'postgresql' && onOpenErDiagram}
         <ContextMenu.Item onclick={onOpenErDiagram}>ER 다이어그램 보기</ContextMenu.Item>
       {/if}
-      <ContextMenu.Separator />
-      <ContextMenu.Item onclick={onEdit}>스키마 편집</ContextMenu.Item>
+      {#if dbType === 'postgresql'}
+        <ContextMenu.Separator />
+        <ContextMenu.Item onclick={onEdit}>스키마 편집</ContextMenu.Item>
+      {/if}
       <ContextMenu.Item onclick={onRefresh}>새로고침</ContextMenu.Item>
-      <ContextMenu.Separator />
-      <ContextMenu.Item onclick={onDelete} class="text-destructive focus:text-destructive">
-        스키마 삭제
-      </ContextMenu.Item>
+      {#if dbType === 'postgresql'}
+        <ContextMenu.Separator />
+        <ContextMenu.Item onclick={onDelete} class="text-destructive focus:text-destructive">
+          스키마 삭제
+        </ContextMenu.Item>
+      {/if}
     {/if}
     {#if level === 'connection'}
       <ContextMenu.Item onclick={onOpenEditor}>SQL 편집기 열기</ContextMenu.Item>

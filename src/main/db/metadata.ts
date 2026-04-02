@@ -242,7 +242,25 @@ export async function dropSchema(
 
 export async function getTableNames(connectionId: number, schemaName: string): Promise<string[]> {
   const conn = await getConnWithSsh(connectionId)
-  if (conn.dbType !== 'postgresql') throw new Error('PostgreSQL에서만 지원됩니다.')
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      const [rows] = await connection.query<mysql.RowDataPacket[]>(
+        `SELECT table_name AS name
+         FROM information_schema.tables
+         WHERE table_schema = ? AND table_type = 'BASE TABLE'
+         ORDER BY table_name`,
+        [schemaName]
+      )
+      return rows.map((r) => r.name as string)
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+  }
+
+  if (conn.dbType !== 'postgresql') throw new Error('지원하지 않는 DB 유형입니다.')
 
   let client: PgClient | undefined
   try {
@@ -260,7 +278,25 @@ export async function getTableNames(connectionId: number, schemaName: string): P
 
 export async function getColumnNames(connectionId: number, schemaName: string, tableName: string): Promise<string[]> {
   const conn = await getConnWithSsh(connectionId)
-  if (conn.dbType !== 'postgresql') throw new Error('PostgreSQL에서만 지원됩니다.')
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      const [rows] = await connection.query<mysql.RowDataPacket[]>(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = ? AND table_name = ?
+         ORDER BY ordinal_position`,
+        [schemaName, tableName]
+      )
+      return rows.map((r) => r.column_name as string)
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+  }
+
+  if (conn.dbType !== 'postgresql') throw new Error('지원하지 않는 DB 유형입니다.')
 
   let client: PgClient | undefined
   try {
@@ -320,6 +356,23 @@ export async function alterTable(connectionId: number, params: AlterTableParams)
 
 export async function getSchemas(connectionId: number): Promise<SchemaInfo[]> {
   const conn = await getConnWithSsh(connectionId)
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      const [rows] = await connection.query<mysql.RowDataPacket[]>(
+        `SELECT schema_name AS name
+         FROM information_schema.schemata
+         WHERE schema_name NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
+         ORDER BY schema_name`
+      )
+      return rows.map((r) => ({ name: r.name as string, owned: false }))
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+  }
+
   if (conn.dbType !== 'postgresql') {
     throw new Error(`${conn.dbType}는 아직 스키마 조회를 지원하지 않습니다.`)
   }
@@ -347,6 +400,160 @@ export async function getSchemas(connectionId: number): Promise<SchemaInfo[]> {
 
 export async function getSchemaObjects(connectionId: number, schemaName: string): Promise<SchemaObjects> {
   const conn = await getConnWithSsh(connectionId)
+
+  if (conn.dbType === 'mysql' || conn.dbType === 'mariadb') {
+    let connection: mysql.Connection | undefined
+    try {
+      connection = await mysql.createConnection(buildMysqlConfig(conn))
+      const db = schemaName
+
+      const [[tableRows], [viewRows]] = await Promise.all([
+        connection.query<mysql.RowDataPacket[]>(
+          `SELECT table_name AS name FROM information_schema.tables
+           WHERE table_schema = ? AND table_type = 'BASE TABLE'
+           ORDER BY table_name`,
+          [db]
+        ),
+        connection.query<mysql.RowDataPacket[]>(
+          `SELECT table_name AS name FROM information_schema.tables
+           WHERE table_schema = ? AND table_type = 'VIEW'
+           ORDER BY table_name`,
+          [db]
+        )
+      ])
+
+      const tableNames = tableRows.map((r) => r.name as string)
+      const viewNames = viewRows.map((r) => r.name as string)
+      const allNames = [...tableNames, ...viewNames]
+
+      if (allNames.length === 0) {
+        return { tables: [], views: [], materialized_views: [], functions: [] }
+      }
+
+      const inPlaceholders = (arr: string[]): string => arr.map(() => '?').join(',')
+
+      const [[columnsRows], [pkRows], [fkRows], [indexRows]] = await Promise.all([
+        connection.query<mysql.RowDataPacket[]>(
+          `SELECT table_name, column_name, column_type, is_nullable, column_default
+           FROM information_schema.columns
+           WHERE table_schema = ? AND table_name IN (${inPlaceholders(allNames)})
+           ORDER BY table_name, ordinal_position`,
+          [db, ...allNames]
+        ),
+        connection.query<mysql.RowDataPacket[]>(
+          `SELECT table_name, column_name
+           FROM information_schema.key_column_usage
+           WHERE table_schema = ? AND constraint_name = 'PRIMARY'
+             AND table_name IN (${inPlaceholders(allNames)})`,
+          [db, ...allNames]
+        ),
+        tableNames.length > 0
+          ? connection.query<mysql.RowDataPacket[]>(
+              `SELECT kcu.table_name, kcu.constraint_name,
+                      kcu.column_name AS local_column,
+                      kcu.referenced_table_schema AS ref_schema,
+                      kcu.referenced_table_name AS ref_table,
+                      kcu.referenced_column_name AS ref_column,
+                      rc.delete_rule, rc.update_rule
+               FROM information_schema.key_column_usage kcu
+               JOIN information_schema.referential_constraints rc
+                 ON kcu.constraint_name = rc.constraint_name
+                 AND kcu.constraint_schema = rc.constraint_schema
+               WHERE kcu.table_schema = ?
+                 AND kcu.referenced_table_name IS NOT NULL
+                 AND kcu.table_name IN (${inPlaceholders(tableNames)})
+               ORDER BY kcu.table_name, kcu.constraint_name, kcu.ordinal_position`,
+              [db, ...tableNames]
+            )
+          : Promise.resolve([[] as mysql.RowDataPacket[]]),
+        tableNames.length > 0
+          ? connection.query<mysql.RowDataPacket[]>(
+              `SELECT table_name, index_name, non_unique, column_name
+               FROM information_schema.statistics
+               WHERE table_schema = ? AND index_name != 'PRIMARY'
+                 AND table_name IN (${inPlaceholders(tableNames)})
+               ORDER BY table_name, index_name, seq_in_index`,
+              [db, ...tableNames]
+            )
+          : Promise.resolve([[] as mysql.RowDataPacket[]])
+      ])
+
+      const pkSet = new Set(pkRows.map((r) => `${r.table_name}.${r.column_name}`))
+
+      const columnsByTable = new Map<string, ColumnInfo[]>()
+      for (const r of columnsRows) {
+        const tbl = r.table_name as string
+        if (!columnsByTable.has(tbl)) columnsByTable.set(tbl, [])
+        columnsByTable.get(tbl)!.push({
+          name: r.column_name as string,
+          dataType: r.column_type as string,
+          nullable: r.is_nullable === 'YES',
+          isPrimaryKey: pkSet.has(`${tbl}.${r.column_name}`),
+          defaultValue: r.column_default as string | null
+        })
+      }
+
+      const fksByTable = new Map<string, FKInfo[]>()
+      const fkMap = new Map<string, FKInfo>()
+      for (const r of fkRows) {
+        const tbl = r.table_name as string
+        const key = `${tbl}.${r.constraint_name as string}`
+        if (!fkMap.has(key)) {
+          const fk: FKInfo = {
+            constraintName: r.constraint_name as string,
+            localColumns: [],
+            refSchema: r.ref_schema as string,
+            refTable: r.ref_table as string,
+            refColumns: [],
+            onDelete: r.delete_rule as string,
+            onUpdate: r.update_rule as string
+          }
+          fkMap.set(key, fk)
+          if (!fksByTable.has(tbl)) fksByTable.set(tbl, [])
+          fksByTable.get(tbl)!.push(fk)
+        }
+        fkMap.get(key)!.localColumns.push(r.local_column as string)
+        fkMap.get(key)!.refColumns.push(r.ref_column as string)
+      }
+
+      const indexesByTable = new Map<string, IndexInfo[]>()
+      const indexMap = new Map<string, IndexInfo>()
+      for (const r of indexRows) {
+        const tbl = r.table_name as string
+        const key = `${tbl}.${r.index_name as string}`
+        if (!indexMap.has(key)) {
+          const idx: IndexInfo = {
+            name: r.index_name as string,
+            unique: (r.non_unique as number) === 0,
+            columns: []
+          }
+          indexMap.set(key, idx)
+          if (!indexesByTable.has(tbl)) indexesByTable.set(tbl, [])
+          indexesByTable.get(tbl)!.push(idx)
+        }
+        indexMap.get(key)!.columns.push(r.column_name as string)
+      }
+
+      return {
+        tables: tableNames.map((name) => ({
+          name,
+          columns: columnsByTable.get(name) ?? [],
+          indexes: indexesByTable.get(name) ?? [],
+          sequences: [],
+          foreignKeys: fksByTable.get(name) ?? []
+        })),
+        views: viewNames.map((name) => ({
+          name,
+          columns: columnsByTable.get(name) ?? []
+        })),
+        materialized_views: [],
+        functions: []
+      }
+    } finally {
+      if (connection) await connection.end().catch(() => {})
+    }
+  }
+
   if (conn.dbType !== 'postgresql') {
     throw new Error(`${conn.dbType}는 아직 스키마 오브젝트 조회를 지원하지 않습니다.`)
   }
