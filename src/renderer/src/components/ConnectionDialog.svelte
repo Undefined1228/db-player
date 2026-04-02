@@ -23,8 +23,7 @@
   const dbTypes: { value: DbType; label: string; defaultPort: number; protocol: string }[] = [
     { value: 'postgresql', label: 'PostgreSQL', defaultPort: 5432, protocol: 'postgresql' },
     { value: 'mysql', label: 'MySQL', defaultPort: 3306, protocol: 'mysql' },
-    { value: 'mariadb', label: 'MariaDB', defaultPort: 3306, protocol: 'mysql' },
-    { value: 'sqlite', label: 'SQLite', defaultPort: 0, protocol: 'sqlite' }
+    { value: 'mariadb', label: 'MariaDB', defaultPort: 3306, protocol: 'mysql' }
   ]
 
   let name = $state('')
