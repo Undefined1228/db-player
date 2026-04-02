@@ -5,7 +5,8 @@
   import { Label } from '$lib/components/ui/label'
   import { Button } from '$lib/components/ui/button'
   import { Checkbox } from '$lib/components/ui/checkbox'
-  import { Plus, Trash2, GripVertical, Loader2 } from 'lucide-svelte'
+  import { Plus, Trash2, Loader2 } from 'lucide-svelte'
+  import ColumnEditor from './ColumnEditor.svelte'
 
   let {
     open = $bindable(false),
@@ -271,11 +272,6 @@
     }
   }
 
-  function sizePlaceholder(type: string): string {
-    if (type === 'numeric') return '정밀도,소수점 (예: 10,2)'
-    return '길이 (예: 255)'
-  }
-
   function selectClass(): string {
     return 'h-7 w-full rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring'
   }
@@ -347,65 +343,18 @@
               </thead>
               <tbody>
                 {#each columns as col, idx (col.id)}
-                  <tr class="border-b border-border last:border-0 hover:bg-muted/30">
-                    <td class="px-2 py-1.5 text-muted-foreground">
-                      <GripVertical class="h-3.5 w-3.5" />
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <Input
-                        bind:value={col.name}
-                        oninput={() => { columnErrors.delete(idx); columnErrors = new Set(columnErrors) }}
-                        placeholder="column_name"
-                        class="h-7 text-xs {columnErrors.has(idx) ? 'border-destructive-foreground ring-1 ring-destructive-foreground' : ''}"
-                      />
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <select
-                        value={col.type}
-                        onchange={(e) => onTypeChange(idx, (e.target as HTMLSelectElement).value)}
-                        class={selectClass()}
-                      >
-                        {#each TYPE_GROUPS as group}
-                          <optgroup label={group.group}>
-                            {#each group.types as type}
-                              <option value={type}>{type}</option>
-                            {/each}
-                          </optgroup>
-                        {/each}
-                      </select>
-                    </td>
-                    <td class="px-2 py-1.5">
-                      {#if SIZE_TYPES.has(col.type)}
-                        <Input bind:value={col.size} placeholder={sizePlaceholder(col.type)} class="h-7 text-xs" />
-                      {:else}
-                        <span class="text-muted-foreground px-1">—</span>
-                      {/if}
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <div class="flex justify-center">
-                        <Checkbox checked={col.primaryKey} onCheckedChange={() => togglePrimaryKey(idx)} />
-                      </div>
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <div class="flex justify-center">
-                        <Checkbox bind:checked={col.nullable} disabled={col.primaryKey} />
-                      </div>
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <Input bind:value={col.defaultValue} placeholder="없음" class="h-7 text-xs" />
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-6 w-6 text-muted-foreground hover:text-destructive-foreground"
-                        onclick={() => removeColumn(idx)}
-                        disabled={columns.length === 1}
-                      >
-                        <Trash2 class="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
+                  <ColumnEditor
+                    bind:col={col}
+                    {idx}
+                    typeGroups={TYPE_GROUPS}
+                    sizeTypes={SIZE_TYPES}
+                    hasError={columnErrors.has(idx)}
+                    canDelete={columns.length > 1}
+                    onTypeChange={(i, t) => onTypeChange(i, t)}
+                    onRemove={(i) => removeColumn(i)}
+                    onTogglePrimaryKey={(i) => togglePrimaryKey(i)}
+                    onNameInput={(i) => { columnErrors.delete(i); columnErrors = new Set(columnErrors) }}
+                  />
                 {/each}
               </tbody>
             </table>

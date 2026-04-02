@@ -6,7 +6,7 @@
   import { Button } from '$lib/components/ui/button'
   import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group'
   import { Checkbox } from '$lib/components/ui/checkbox'
-  import { Loader2 } from 'lucide-svelte'
+  import { Loader2, ClipboardPaste } from 'lucide-svelte'
   import { loadConnections } from '$lib/stores/connections'
 
   let {
@@ -50,6 +50,7 @@
   let testing = $state(false)
   let saving = $state(false)
   let testResult = $state<{ success: boolean; message: string } | null>(null)
+  let pasteError = $state('')
 
   function resetForm(): void {
     name = ''
@@ -72,6 +73,7 @@
     sshPassphrase = ''
     errors = new Set()
     testResult = null
+    pasteError = ''
   }
 
   function populateForm(data: ConnectionWithPassword): void {
@@ -113,8 +115,65 @@
     const protocol = match[1].toLowerCase()
     const found = dbTypes.find((t) => t.protocol === protocol)
     if (found && found.value !== dbType) {
-      console.log('[URL 감지] DB 유형 변경:', dbType, '→', found.value)
       dbType = found.value
+    }
+  }
+
+  function parseJdbcUrl(raw: string): boolean {
+    const cleaned = raw.trim().replace(/^jdbc:/i, '')
+    const match = cleaned.match(/^(\w+):\/\/(?:([^:@]+)(?::([^@]*))?@)?([^/:?]+)(?::(\d+))?(\/[^?]*)?(?:\?(.*))?/)
+    if (!match) return false
+    const protocol = match[1].toLowerCase()
+    const found = dbTypes.find((t) => t.protocol === protocol || t.value === protocol)
+    if (!found) return false
+    dbType = found.value
+    host = match[4] ?? 'localhost'
+    port = match[5] ? Number(match[5]) : found.defaultPort
+    database = match[6] ? match[6].replace(/^\//, '') : ''
+
+    const params = new URLSearchParams(match[7] ?? '')
+    const urlUser = match[2] ? decodeURIComponent(match[2]) : undefined
+    const urlPass = match[3] ? decodeURIComponent(match[3]) : undefined
+    const paramUser = params.get('user') ?? params.get('username') ?? undefined
+    const paramPass = params.get('password') ?? undefined
+
+    if (urlUser) username = urlUser
+    else if (paramUser) username = paramUser
+    if (urlPass) password = urlPass
+    else if (paramPass) password = paramPass
+
+    inputMode = 'fields'
+    errors = new Set()
+    testResult = null
+    return true
+  }
+
+  function parseDataGripXml(text: string): boolean {
+    const jdbcUrlMatch = text.match(/<jdbc-url>(.*?)<\/jdbc-url>/)
+    if (!jdbcUrlMatch) return false
+    const ok = parseJdbcUrl(jdbcUrlMatch[1])
+    if (!ok) return false
+    const userMatch = text.match(/<user-name>(.*?)<\/user-name>/)
+    if (userMatch) username = userMatch[1]
+    const nameMatch = text.match(/<data-source[^>]+name="([^"]+)"/)
+    if (nameMatch) name = nameMatch[1]
+    return true
+  }
+
+  async function handlePasteFromClipboard(): Promise<void> {
+    pasteError = ''
+    try {
+      const text = await navigator.clipboard.readText()
+      if (!text.trim()) {
+        pasteError = '클립보드가 비어 있습니다.'
+        return
+      }
+      const ok = text.includes('<jdbc-url>') ? parseDataGripXml(text) : parseJdbcUrl(text)
+      if (!ok) {
+        pasteError = '지원하지 않는 형식입니다. (DataGrip 데이터소스 복사 또는 JDBC URL)'
+      }
+    } catch {
+      pasteError = '클립보드 읽기 권한이 없습니다.'
     }
   }
 
@@ -239,6 +298,19 @@
     </Dialog.Header>
 
     <div class="grid gap-4 py-4">
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label class="text-right text-xs text-muted-foreground">DataGrip</Label>
+        <div class="col-span-3 flex flex-col gap-1">
+          <Button variant="outline" size="sm" class="h-7 w-fit gap-1.5 text-xs" onclick={handlePasteFromClipboard}>
+            <ClipboardPaste class="h-3.5 w-3.5" />
+            클립보드에서 가져오기
+          </Button>
+          {#if pasteError}
+            <p class="text-xs text-destructive-foreground">{pasteError}</p>
+          {/if}
+        </div>
+      </div>
+
       <div class="grid grid-cols-4 items-center gap-4">
         <Label class="text-right text-xs">연결 이름 *</Label>
         <Input

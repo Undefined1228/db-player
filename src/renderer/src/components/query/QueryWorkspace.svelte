@@ -2,11 +2,11 @@
   import { Terminal, X } from 'lucide-svelte'
   import { tick } from 'svelte'
   import { tabsStore } from '$lib/stores/tabs'
-  import { DbIcon } from './icons'
-  import DataViewerTab from './DataViewerTab.svelte'
+  import { DbIcon } from '../icons'
+  import DataViewerTab from '../data-viewer/DataViewerTab.svelte'
   import QueryEditor from './QueryEditor.svelte'
-  import ErDiagramTab from './ErDiagramTab.svelte'
-  import MonitorTab from './MonitorTab.svelte'
+  import ErDiagramTab from '../er-diagram/ErDiagramTab.svelte'
+  import MonitorTab from '../monitor/MonitorTab.svelte'
 
   const isMac = navigator.platform.toUpperCase().includes('MAC')
   const modKey = isMac ? '⌘' : 'Ctrl'

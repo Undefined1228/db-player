@@ -1,11 +1,11 @@
 <script lang="ts">
   import { ResizablePaneGroup, ResizablePane, ResizableHandle } from '$lib/components/ui/resizable'
-  import Header from './components/Header.svelte'
-  import Sidebar from './components/Sidebar.svelte'
-  import QueryWorkspace from './components/QueryWorkspace.svelte'
-  import NewTabDialog from './components/NewTabDialog.svelte'
-  import DDLDialog from './components/DDLDialog.svelte'
-  import CommandPalette from './components/CommandPalette.svelte'
+  import Header from './components/layout/Header.svelte'
+  import Sidebar from './components/layout/Sidebar.svelte'
+  import QueryWorkspace from './components/query/QueryWorkspace.svelte'
+  import NewTabDialog from './components/layout/NewTabDialog.svelte'
+  import DDLDialog from './components/table/DDLDialog.svelte'
+  import CommandPalette from './components/layout/CommandPalette.svelte'
   import { tabsStore } from '$lib/stores/tabs'
 
   const isMac = navigator.platform.toUpperCase().includes('MAC')
