@@ -1,8 +1,11 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, net } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import { app, shell, BrowserWindow, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import log from 'electron-log'
+import icon from '../../resources/icon.png?asset'
+import { initAppDb } from './db/app-db'
+import { closeAllSshTunnels } from './db/ssh-tunnel'
+import { registerAllHandlers } from './ipc'
 
 log.transports.file.level = 'debug'
 log.transports.console.level = 'debug'
@@ -22,19 +25,6 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   log.error('unhandledRejection:', reason)
 })
-import icon from '../../resources/icon.png?asset'
-import { testConnection, type ConnectionParams } from './db/test-connection'
-import { initAppDb, addQueryHistory, getQueryHistory } from './db/app-db'
-import { closeAllSshTunnels, closeSshTunnel } from './db/ssh-tunnel'
-import {
-  saveConnection,
-  listConnections,
-  deleteConnection,
-  getConnectionWithPassword,
-  type SaveConnectionParams
-} from './db/connection-repository'
-import { getSchemas, getSchemaObjects, getCompletionSchema, getRoles, createSchema, getSchemaOwner, alterSchema, dropSchema, createTable, alterTable, getTableNames, getColumnNames, getObjectDDL, selectAll, executeDataChanges, executeQuery, executeQueryBatch, cancelQuery, explainQuery, createView, alterView, dropView, createIndex, dropIndex, getSessions, killSession, getLocks, getTableStats, type DataChangesParams, type SelectAllParams, type CreateIndexParams } from './db/metadata'
-import type { CreateTableParams, AlterTableParams } from './db/ddl-builder'
 
 function createWindow(): void {
   log.info('BrowserWindow 생성 중')
@@ -79,8 +69,6 @@ function createWindow(): void {
     }
   })
 
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -88,9 +76,6 @@ function createWindow(): void {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.setName('DB Player')
 
 app.whenReady().then(() => {
@@ -159,228 +144,16 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  ipcMain.on('ping', () => console.log('pong'))
-
-  ipcMain.handle('conn:save', (_event, params: SaveConnectionParams) => {
-    return saveConnection(params)
-  })
-
-  ipcMain.handle('conn:list', () => {
-    return listConnections()
-  })
-
-  ipcMain.handle('conn:delete', (_event, id: number) => {
-    deleteConnection(id)
-    return { success: true }
-  })
-
-  ipcMain.handle('conn:get', (_event, id: number) => {
-    return getConnectionWithPassword(id) ?? null
-  })
-
-  ipcMain.handle('db:schemas', async (_event, connectionId: number) => {
-    return getSchemas(connectionId)
-  })
-
-  ipcMain.handle('db:roles', async (_event, connectionId: number) => {
-    return getRoles(connectionId)
-  })
-
-  ipcMain.handle('schema:create', async (_event, connectionId: number, schemaName: string, owner?: string) => {
-    await createSchema(connectionId, schemaName, owner)
-    return { success: true }
-  })
-
-  ipcMain.handle('schema:get-owner', async (_event, connectionId: number, schemaName: string) => {
-    return getSchemaOwner(connectionId, schemaName)
-  })
-
-  ipcMain.handle('schema:alter', async (_event, connectionId: number, schemaName: string, newName?: string, newOwner?: string) => {
-    await alterSchema(connectionId, schemaName, newName, newOwner)
-    return { success: true }
-  })
-
-  ipcMain.handle('schema:drop', async (_event, connectionId: number, schemaName: string, cascade: boolean) => {
-    await dropSchema(connectionId, schemaName, cascade)
-    return { success: true }
-  })
-
-  ipcMain.handle('db:table-names', async (_event, connectionId: number, schemaName: string) => {
-    return getTableNames(connectionId, schemaName)
-  })
-
-  ipcMain.handle('db:column-names', async (_event, connectionId: number, schemaName: string, tableName: string) => {
-    return getColumnNames(connectionId, schemaName, tableName)
-  })
-
-  ipcMain.handle('table:create', async (_event, connectionId: number, params: CreateTableParams) => {
-    await createTable(connectionId, params)
-    return { success: true }
-  })
-
-  ipcMain.handle('table:alter', async (_event, connectionId: number, params: AlterTableParams) => {
-    await alterTable(connectionId, params)
-    return { success: true }
-  })
-
-  ipcMain.handle('view:create', async (_event, connectionId: number, schemaName: string, viewName: string, selectQuery: string) => {
-    await createView(connectionId, schemaName, viewName, selectQuery)
-    return { success: true }
-  })
-
-  ipcMain.handle('view:alter', async (_event, connectionId: number, schemaName: string, viewName: string, newViewName: string | undefined, newSelectQuery: string | undefined) => {
-    await alterView(connectionId, schemaName, viewName, newViewName, newSelectQuery)
-    return { success: true }
-  })
-
-  ipcMain.handle('view:drop', async (_event, connectionId: number, schemaName: string, viewName: string, cascade: boolean) => {
-    await dropView(connectionId, schemaName, viewName, cascade)
-    return { success: true }
-  })
-
-  ipcMain.handle('index:create', async (_event, connectionId: number, params: CreateIndexParams) => {
-    await createIndex(connectionId, params)
-    return { success: true }
-  })
-
-  ipcMain.handle('index:drop', async (_event, connectionId: number, schemaName: string, indexName: string) => {
-    await dropIndex(connectionId, schemaName, indexName)
-    return { success: true }
-  })
-
-  ipcMain.handle('db:object-ddl', async (_event, connectionId: number, schemaName: string, objectName: string, objectType: string) => {
-    return getObjectDDL(connectionId, schemaName, objectName, objectType as 'table' | 'view' | 'matview' | 'function')
-  })
-
-  ipcMain.handle('db:schema-objects', async (_event, connectionId: number, schemaName: string) => {
-    return getSchemaObjects(connectionId, schemaName)
-  })
-
-  ipcMain.handle('db:completion-schema', async (_event, connectionId: number, schemaName?: string) => {
-    return getCompletionSchema(connectionId, schemaName)
-  })
-
-  ipcMain.handle('db:select-all', async (_event, connectionId: number, schemaName: string, tableName: string, params: SelectAllParams) => {
-    return selectAll(connectionId, schemaName, tableName, params)
-  })
-
-  ipcMain.handle('db:data-changes', async (_event, connectionId: number, params: DataChangesParams) => {
-    await executeDataChanges(connectionId, params)
-    return { success: true }
-  })
-
-  ipcMain.handle('db:execute-query', async (_event, connectionId: number, sql: string) => {
-    return executeQuery(connectionId, sql)
-  })
-
-  ipcMain.handle('db:execute-query-batch', async (_event, connectionId: number, sqls: string[], stopOnError: boolean, useTransaction: boolean) => {
-    return executeQueryBatch(connectionId, sqls, stopOnError, useTransaction)
-  })
-
-  ipcMain.handle('query:cancel', async (_event, connectionId: number) => {
-    return cancelQuery(connectionId)
-  })
-
-  ipcMain.handle('query:explain', async (_event, connectionId: number, sql: string) => {
-    return explainQuery(connectionId, sql)
-  })
-
-  ipcMain.handle('history:add', (_event, params: { connectionId: number; sql: string; executedAt: string; executionTime: number; success: boolean }) => {
-    addQueryHistory(params)
-    return { success: true }
-  })
-
-  ipcMain.handle('history:list', (_event, connectionId: number) => {
-    return getQueryHistory(connectionId)
-  })
-
-  ipcMain.handle('app:version', () => app.getVersion())
-
-  ipcMain.handle('app:check-update', async () => {
-    if (process.platform !== 'darwin') return null
-    try {
-      const res = await net.fetch('https://api.github.com/repos/Undefined1228/db-player/releases/latest', {
-        headers: { 'User-Agent': 'db-player-app' }
-      })
-      if (!res.ok) return null
-      const data = await res.json() as { tag_name: string; html_url: string; assets: { name: string; browser_download_url: string }[] }
-      const latestVersion = data.tag_name.replace(/^v/, '')
-      const currentVersion = app.getVersion()
-      const hasUpdate = latestVersion !== currentVersion
-      const dmgAsset = data.assets.find((a: { name: string; browser_download_url: string }) => a.name.endsWith('.dmg'))
-      return {
-        hasUpdate,
-        version: data.tag_name,
-        downloadUrl: dmgAsset?.browser_download_url ?? data.html_url
-      }
-    } catch {
-      return null
-    }
-  })
-
-  ipcMain.handle('shell:open-external', (_event, url: string) => {
-    shell.openExternal(url)
-  })
-
-  ipcMain.handle('db:test-connection', async (_event, params: ConnectionParams) => {
-    console.log('[main ipc] db:test-connection 수신:', JSON.stringify(params))
-    try {
-      const result = await testConnection(params)
-      console.log('[main ipc] db:test-connection 응답:', JSON.stringify(result))
-      return result
-    } catch (err) {
-      console.error('[main ipc] db:test-connection 예외:', err)
-      return { success: false, message: err instanceof Error ? err.message : String(err) }
-    }
-  })
-
-  ipcMain.handle('ssh:close-tunnel', (_event, connectionId: number) => {
-    closeSshTunnel(connectionId)
-  })
-
-  ipcMain.handle('monitor:sessions', (_event, connectionId: number) => {
-    return getSessions(connectionId)
-  })
-
-  ipcMain.handle('monitor:kill-session', (_event, connectionId: number, sessionId: number, mode: 'cancel' | 'terminate') => {
-    return killSession(connectionId, sessionId, mode)
-  })
-
-  ipcMain.handle('monitor:locks', (_event, connectionId: number) => {
-    return getLocks(connectionId)
-  })
-
-  ipcMain.handle('monitor:table-stats', (_event, connectionId: number) => {
-    return getTableStats(connectionId)
-  })
-
-  ipcMain.handle('update:install', () => {
-    autoUpdater.quitAndInstall()
-  })
-
-  if (process.platform === 'win32') {
-    autoUpdater.on('update-available', (info) => {
-      BrowserWindow.getAllWindows()[0]?.webContents.send('update:available', info.version)
-    })
-    autoUpdater.on('update-downloaded', (info) => {
-      BrowserWindow.getAllWindows()[0]?.webContents.send('update:downloaded', info.version)
-    })
-    autoUpdater.checkForUpdates().catch((err) => log.error('업데이트 확인 실패:', err))
-  }
+  registerAllHandlers()
 
   log.info('createWindow 호출')
   createWindow()
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('before-quit', closeAllSshTunnels)
 
 app.on('window-all-closed', () => {
@@ -388,6 +161,3 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
