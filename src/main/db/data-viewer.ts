@@ -39,14 +39,14 @@ export async function selectAll(
 
       const [[colRows], [pkRows]] = await Promise.all([
         connection.query<mysql.RowDataPacket[]>(
-          `SELECT column_name, column_default, column_type
+          `SELECT column_name AS col_name, column_default AS col_default, column_type AS col_type
            FROM information_schema.columns
            WHERE table_schema = ? AND table_name = ?
            ORDER BY ordinal_position`,
           [schemaName, tableName]
         ),
         connection.query<mysql.RowDataPacket[]>(
-          `SELECT column_name
+          `SELECT column_name AS col_name
            FROM information_schema.key_column_usage
            WHERE table_schema = ? AND table_name = ? AND constraint_name = 'PRIMARY'
            ORDER BY ordinal_position`,
@@ -54,14 +54,14 @@ export async function selectAll(
         )
       ])
 
-      const columnNames = colRows.map((r) => r.column_name as string)
+      const columnNames = colRows.map((r) => r['col_name'] as string)
       const columnDefaults: Record<string, string | null> = {}
       const columnTypes: Record<string, string> = {}
       for (const r of colRows) {
-        columnDefaults[r.column_name as string] = r.column_default as string | null
-        columnTypes[r.column_name as string] = r.column_type as string
+        columnDefaults[r['col_name'] as string] = r['col_default'] as string | null
+        columnTypes[r['col_name'] as string] = r['col_type'] as string
       }
-      const primaryKeys = pkRows.map((r) => r.column_name as string)
+      const primaryKeys = pkRows.map((r) => r['col_name'] as string)
 
       const searchPattern = params.search ? `%${params.search}%` : null
       const searchArgs: unknown[] = []

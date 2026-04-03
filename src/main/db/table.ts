@@ -108,7 +108,7 @@ export async function getColumnNames(connectionId: number, schemaName: string, t
     try {
       connection = await mysql.createConnection(buildMysqlConfig(conn))
       const [rows] = await connection.query<mysql.RowDataPacket[]>(
-        `SELECT column_name
+        `SELECT column_name AS column_name
          FROM information_schema.columns
          WHERE table_schema = ? AND table_name = ?
          ORDER BY ordinal_position`,
@@ -248,14 +248,14 @@ export async function getSchemaObjects(connectionId: number, schemaName: string)
 
       const [[columnsRows], [pkRows], [fkRows], [indexRows]] = await Promise.all([
         connection.query<mysql.RowDataPacket[]>(
-          `SELECT table_name, column_name, column_type, is_nullable, column_default
+          `SELECT table_name AS table_name, column_name AS column_name, column_type AS column_type, is_nullable AS is_nullable, column_default AS column_default
            FROM information_schema.columns
            WHERE table_schema = ? AND table_name IN (${inPlaceholders(allNames)})
            ORDER BY table_name, ordinal_position`,
           [db, ...allNames]
         ),
         connection.query<mysql.RowDataPacket[]>(
-          `SELECT table_name, column_name
+          `SELECT table_name AS table_name, column_name AS column_name
            FROM information_schema.key_column_usage
            WHERE table_schema = ? AND table_name IN (${inPlaceholders(tableNames)}) AND constraint_name = 'PRIMARY'
            ORDER BY table_name, ordinal_position`,
@@ -263,11 +263,11 @@ export async function getSchemaObjects(connectionId: number, schemaName: string)
         ),
         connection.query<mysql.RowDataPacket[]>(
           `SELECT
-             kcu.table_name, kcu.constraint_name, kcu.column_name AS local_column,
+             kcu.table_name AS table_name, kcu.constraint_name AS constraint_name, kcu.column_name AS local_column,
              kcu.referenced_table_schema AS ref_schema,
              kcu.referenced_table_name AS ref_table,
              kcu.referenced_column_name AS ref_column,
-             rc.delete_rule, rc.update_rule
+             rc.delete_rule AS delete_rule, rc.update_rule AS update_rule
            FROM information_schema.key_column_usage kcu
            JOIN information_schema.referential_constraints rc
              ON rc.constraint_name = kcu.constraint_name
@@ -279,7 +279,7 @@ export async function getSchemaObjects(connectionId: number, schemaName: string)
         ),
         connection.query<mysql.RowDataPacket[]>(
           `SELECT
-             s.table_name, s.index_name, s.non_unique, s.column_name, s.seq_in_index
+             s.table_name AS table_name, s.index_name AS index_name, s.non_unique AS non_unique, s.column_name AS column_name, s.seq_in_index AS seq_in_index
            FROM information_schema.statistics s
            WHERE s.table_schema = ? AND s.table_name IN (${inPlaceholders(tableNames)})
            ORDER BY s.table_name, s.index_name, s.seq_in_index`,
