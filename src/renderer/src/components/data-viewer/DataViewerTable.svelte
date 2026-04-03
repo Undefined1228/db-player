@@ -105,12 +105,12 @@
         return frozenCols.filter((c) => columns.includes(c))
     }
 
-    function getFrozenStyle(col: string, zIndex: number = 1): string {
+    function getFrozenStyle(col: string, zIndex: number = 1, bgColor: string = ''): string {
         const ordered = getOrderedFrozen()
         if (!ordered.includes(col)) return ''
         const fixedWidth = (readonly ? 0 : 32) + 40
         const left = fixedWidth + ordered.slice(0, ordered.indexOf(col)).reduce((sum, c) => sum + (colWidths[c] ?? 120), 0)
-        return `position: sticky; left: ${left}px; z-index: ${zIndex};`
+        return `position: sticky; left: ${left}px; z-index: ${zIndex};${bgColor ? ` background-color: ${bgColor};` : ''}`
     }
 
     function isBooleanCol(col: string): boolean {
@@ -217,7 +217,7 @@
         <thead class="sticky top-0 bg-muted">
             <tr>
                 {#if !readonly}
-                    <th class="w-8 border-b border-border bg-muted" style="position: sticky; left: 0; z-index: 3;">
+                    <th class="border-b border-border bg-muted" style="width: 32px; min-width: 32px; max-width: 32px; position: sticky; left: 0; z-index: 3;">
                         <div class="flex items-center justify-center px-2 py-1.5">
                             <input
                                 type="checkbox"
@@ -230,8 +230,8 @@
                     </th>
                 {/if}
                 <th
-                    class="w-10 border-b border-border bg-muted text-center text-[10px] font-medium text-muted-foreground/50 select-none"
-                    style="position: sticky; left: {readonly ? 0 : 32}px; z-index: 2;"
+                    class="border-b border-border bg-muted text-center text-[10px] font-medium text-muted-foreground/50 select-none"
+                    style="width: 40px; min-width: 40px; max-width: 40px; position: sticky; left: {readonly ? 0 : 32}px; z-index: 2;"
                 >
                     #
                 </th>
@@ -278,12 +278,12 @@
             {#if !readonly}
                 {#each newRows as nr, nri}
                     <tr class="bg-primary/5">
-                        <td class="w-8 border-b border-primary/30 px-2 bg-primary/5" style="position: sticky; left: 0; z-index: 1;">
+                        <td class="border-b border-primary/30 px-2 bg-primary/5" style="width: 32px; min-width: 32px; max-width: 32px; position: sticky; left: 0; z-index: 1;">
                             <button onclick={() => onnewrowdelete(nri)}>
                                 <X class="h-3 w-3 text-muted-foreground hover:text-destructive" />
                             </button>
                         </td>
-                        <td class="w-10 border-b border-primary/30 bg-primary/5 text-center text-[10px] text-muted-foreground/40 select-none" style="position: sticky; left: {readonly ? 0 : 32}px; z-index: 1;">–</td>
+                        <td class="border-b border-primary/30 bg-primary/5 text-center text-[10px] text-muted-foreground/40 select-none" style="width: 40px; min-width: 40px; max-width: 40px; position: sticky; left: {readonly ? 0 : 32}px; z-index: 1;">–</td>
                         {#each displayColumns as col, ci}
                             <td class="border-b border-primary/30 p-0 whitespace-nowrap">
                                 {#if isBooleanCol(col)}
@@ -328,12 +328,13 @@
         ">
                     {#if !readonly}
                         <td
-                            class="w-8 border-b border-border px-2 {isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : 'bg-background'}"
-                            style="position: sticky; left: 0; z-index: 1;"
+                            class="border-b border-border px-2 relative"
+                            style="width: 32px; min-width: 32px; max-width: 32px; position: sticky; left: 0; z-index: 1; background-color: var(--color-background);"
                         >
+                            <div class="absolute inset-0 pointer-events-none {isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : ''}"></div>
                             <input
                                 type="checkbox"
-                                class="cursor-pointer accent-primary"
+                                class="cursor-pointer accent-primary relative"
                                 checked={isSelected}
                                 disabled={isDeleted}
                                 onchange={() => ontogglerowselect(rowIdx)}
@@ -341,9 +342,12 @@
                         </td>
                     {/if}
                     <td
-                        class="w-10 border-b border-border text-center text-[10px] text-muted-foreground/40 select-none {isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : 'bg-background'}"
-                        style="position: sticky; left: {readonly ? 0 : 32}px; z-index: 1;"
-                    >{rowNumber}</td>
+                        class="border-b border-border text-center text-[10px] text-muted-foreground/40 select-none relative"
+                        style="width: 40px; min-width: 40px; max-width: 40px; position: sticky; left: {readonly ? 0 : 32}px; z-index: 1; background-color: var(--color-background);"
+                    >
+                        <div class="absolute inset-0 pointer-events-none {isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : ''}"></div>
+                        <span class="relative">{rowNumber}</span>
+                    </td>
                     {#each displayColumns as col}
                         {@const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.col === col}
                         {@const changed = isCellChanged(row, col)}
@@ -351,11 +355,14 @@
                         {@const originalValue = row[col]}
                         {@const frozen = frozenCols.includes(col)}
                         <td
-                            class="border-b border-border p-0 whitespace-nowrap {changed && !isDeleted ? 'bg-amber-500/10' : frozen ? (isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : 'bg-background') : ''} {isLastFrozen(col) ? 'border-r-2 border-r-primary/30' : ''}"
-                            style={getFrozenStyle(col, 1)}
+                            class="border-b border-border p-0 whitespace-nowrap {frozen ? 'bg-background relative' : (changed && !isDeleted ? 'bg-amber-500/10' : '')} {isLastFrozen(col) ? 'border-r-2 border-r-primary/30' : ''}"
+                            style={getFrozenStyle(col, 1, frozen ? 'var(--color-background)' : '')}
                             title={changed && !isDeleted ? `원래 값: ${originalValue === null || originalValue === undefined ? 'NULL' : originalValue === '' ? '(빈 문자열)' : String(originalValue)}` : undefined}
                             ondblclick={() => { if (!isDeleted && !readonly && !isBooleanCol(col)) handleDblClick(row, col) }}
                         >
+                            {#if frozen}
+                                <div class="absolute inset-0 pointer-events-none {changed && !isDeleted ? 'bg-amber-500/10' : isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : ''}"></div>
+                            {/if}
                             {#if isBooleanCol(col)}
                                 <div class="px-3 py-1.5">
                                     <input
