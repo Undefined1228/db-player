@@ -65,6 +65,7 @@ const api = {
     ipcRenderer.on('update:available', (_e, version) => callback(version)),
   onUpdateDownloaded: (callback: (version: string) => void) =>
     ipcRenderer.on('update:downloaded', (_e, version) => callback(version)),
+  getUpdateState: () => ipcRenderer.invoke('update:get-state'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   closeSSHTunnel: (connectionId: number) => ipcRenderer.invoke('ssh:close-tunnel', connectionId),
   createView: (connectionId: number, schemaName: string, viewName: string, selectQuery: string) =>
