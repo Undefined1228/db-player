@@ -344,7 +344,7 @@
               <tbody>
                 {#each columns as col, idx (col.id)}
                   <ColumnEditor
-                    bind:col={col}
+                    bind:col={columns[idx]}
                     {idx}
                     typeGroups={TYPE_GROUPS}
                     sizeTypes={SIZE_TYPES}
