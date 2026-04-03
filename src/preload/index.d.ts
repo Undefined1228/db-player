@@ -101,6 +101,7 @@ interface TableStatRow {
 }
 
 interface DbApi {
+  getUpdateState: () => Promise<{ status: 'idle' | 'checking' | 'available' | 'downloaded' | 'error'; version: string | null; message?: string }>
   testConnection: (params: Record<string, unknown>) => Promise<{ success: boolean; message: string }>
   saveConnection: (params: Record<string, unknown>) => Promise<ConnectionRecord>
   listConnections: () => Promise<ConnectionRecord[]>

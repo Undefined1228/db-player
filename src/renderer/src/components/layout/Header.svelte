@@ -10,14 +10,24 @@
   let winUpdateReady = $state<string | null>(null)
 
   $effect(() => {
+    window.api.onUpdateAvailable((version) => { winUpdateVersion = version })
+    window.api.onUpdateDownloaded((version) => { winUpdateReady = version; winUpdateVersion = null })
+
     window.api.getAppVersion().then((v) => { appVersion = v })
     window.api.checkUpdate().then((result) => {
       if (result?.hasUpdate) {
         updateInfo = { version: result.version, downloadUrl: result.downloadUrl }
       }
     })
-    window.api.onUpdateAvailable((version) => { winUpdateVersion = version })
-    window.api.onUpdateDownloaded((version) => { winUpdateReady = version; winUpdateVersion = null })
+    window.api.getUpdateState().then((state) => {
+      if (state.status === 'available' && state.version) {
+        winUpdateVersion = state.version
+      }
+      if (state.status === 'downloaded' && state.version) {
+        winUpdateReady = state.version
+        winUpdateVersion = null
+      }
+    })
   })
 </script>
 
