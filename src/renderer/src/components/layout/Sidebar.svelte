@@ -3,15 +3,17 @@
   import { Button } from '$lib/components/ui/button'
   import * as AlertDialog from '$lib/components/ui/alert-dialog'
   import { Plus, Trash2, ChevronRight, Loader2, FolderOpen } from 'lucide-svelte'
-  import { DbIcon } from './icons'
-  import SchemaTree from './SchemaTree.svelte'
-  import ConnectionDialog from './ConnectionDialog.svelte'
-  import ConnectionContextMenu from './ConnectionContextMenu.svelte'
-  import CreateSchemaDialog from './CreateSchemaDialog.svelte'
-  import EditSchemaDialog from './EditSchemaDialog.svelte'
-  import DropSchemaDialog from './DropSchemaDialog.svelte'
-  import CreateTableDialog from './CreateTableDialog.svelte'
-  import AlterTableDialog from './AlterTableDialog.svelte'
+  import { DbIcon } from '../icons'
+  import SchemaTree from '../schema/SchemaTree.svelte'
+  import ConnectionDialog from '../connection/ConnectionDialog.svelte'
+  import ConnectionContextMenu from '../connection/ConnectionContextMenu.svelte'
+  import CreateSchemaDialog from '../schema/CreateSchemaDialog.svelte'
+  import EditSchemaDialog from '../schema/EditSchemaDialog.svelte'
+  import DropSchemaDialog from '../schema/DropSchemaDialog.svelte'
+  import CreateTableDialog from '../table/CreateTableDialog.svelte'
+  import AlterTableDialog from '../table/AlterTableDialog.svelte'
+  import CreateViewDialog from '../table/CreateViewDialog.svelte'
+  import CreateIndexDialog from '../table/CreateIndexDialog.svelte'
   import { connections, loadConnections, removeConnection, type Connection } from '$lib/stores/connections'
   import { openSqlEditor, createTable, refreshSchemas } from '$lib/actions/sidebar-actions'
   import { tabsStore } from '$lib/stores/tabs'
@@ -58,6 +60,21 @@
   let createTableTarget = $state<SchemaTarget | null>(null)
   let alterTableDialogOpen = $state(false)
   let alterTableTarget = $state<AlterTableTarget | null>(null)
+
+  interface ViewTarget extends SchemaTarget { viewName?: string }
+  let createViewDialogOpen = $state(false)
+  let createViewTarget = $state<ViewTarget | null>(null)
+  let dropViewDialogOpen = $state(false)
+  let dropViewTarget = $state<ViewTarget | null>(null)
+  let dropViewCascade = $state(false)
+  let dropViewLoading = $state(false)
+
+  interface IndexTarget extends SchemaTarget { tableName: string; columns?: ColumnInfo[] }
+  let createIndexDialogOpen = $state(false)
+  let createIndexTarget = $state<IndexTarget | null>(null)
+  let dropIndexDialogOpen = $state(false)
+  let dropIndexTarget = $state<(SchemaTarget & { tableName: string; indexName: string }) | null>(null)
+  let dropIndexLoading = $state(false)
 
   let expanded = $state<Record<number, boolean>>({})
   interface SchemaInfo { name: string; owned: boolean }
@@ -148,6 +165,7 @@
             onDelete={() => confirmDelete(conn)}
             onCreate={() => createTable({ connectionId: conn.id, dbType: conn.dbType })}
             onCreateSchema={() => { createSchemaConnId = conn.id; createSchemaDialogOpen = true }}
+            onMonitor={() => tabsStore.openTab({ connectionId: conn.id, dbType: conn.dbType, type: 'monitor', title: `Monitor: ${conn.name}` })}
           >
           <div class="group flex items-center gap-1 rounded-md px-1 py-1.5 hover:bg-accent">
             <button
@@ -219,6 +237,11 @@
                           onSelect={() => { activeSchemaKey = schemaKey }}
                           onCreateTable={() => { createTableTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name }; createTableDialogOpen = true }}
                           onAlterTable={(info) => { alterTableTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name, ...info }; alterTableDialogOpen = true }}
+                          onCreateView={() => { createViewTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name }; createViewDialogOpen = true }}
+                          onAlterView={(info) => { createViewTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name, viewName: info.viewName }; createViewDialogOpen = true }}
+                          onDropView={(viewName) => { dropViewTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name, viewName }; dropViewCascade = false; dropViewDialogOpen = true }}
+                          onCreateIndex={(info) => { createIndexTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name, tableName: info.tableName, columns: info.columns }; createIndexDialogOpen = true }}
+                          onDropIndex={(info) => { dropIndexTarget = { connectionId: conn.id, dbType: conn.dbType, schemaName: schema.name, tableName: info.tableName, indexName: info.indexName }; dropIndexDialogOpen = true }}
                         />
                       </div>
                     {/if}
@@ -281,6 +304,89 @@
     onAltered={() => handleRefreshSchemas(alterTableTarget!.connectionId)}
   />
 {/if}
+
+{#if createViewTarget !== null}
+  <CreateViewDialog
+    bind:open={createViewDialogOpen}
+    connectionId={createViewTarget.connectionId}
+    schemaName={createViewTarget.schemaName}
+    editViewName={createViewTarget.viewName}
+    onSaved={() => handleRefreshSchemas(createViewTarget!.connectionId)}
+  />
+{/if}
+
+{#if createIndexTarget !== null}
+  <CreateIndexDialog
+    bind:open={createIndexDialogOpen}
+    connectionId={createIndexTarget.connectionId}
+    schemaName={createIndexTarget.schemaName}
+    tableName={createIndexTarget.tableName}
+    tableColumns={createIndexTarget.columns ?? []}
+    onCreated={() => handleRefreshSchemas(createIndexTarget!.connectionId)}
+  />
+{/if}
+
+<AlertDialog.Root bind:open={dropIndexDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>인덱스 삭제</AlertDialog.Title>
+      <AlertDialog.Description>
+        <span class="font-mono text-xs">{dropIndexTarget?.schemaName}.{dropIndexTarget?.indexName}</span> 인덱스를 삭제하시겠습니까?
+        이 작업은 되돌릴 수 없습니다.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel disabled={dropIndexLoading}>취소</AlertDialog.Cancel>
+      <AlertDialog.Action
+        disabled={dropIndexLoading}
+        onclick={async () => {
+          if (!dropIndexTarget) return
+          dropIndexLoading = true
+          try {
+            await window.api.dropIndex(dropIndexTarget.connectionId, dropIndexTarget.schemaName, dropIndexTarget.indexName)
+            dropIndexDialogOpen = false
+            await handleRefreshSchemas(dropIndexTarget.connectionId)
+          } catch (err) {
+            console.error('인덱스 삭제 실패:', err)
+          } finally {
+            dropIndexLoading = false
+          }
+        }}
+      >삭제</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={dropViewDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>뷰 삭제</AlertDialog.Title>
+      <AlertDialog.Description>
+        <span class="font-mono text-xs">{dropViewTarget?.schemaName}.{dropViewTarget?.viewName}</span> 뷰를 삭제하시겠습니까?
+        이 작업은 되돌릴 수 없습니다.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel disabled={dropViewLoading}>취소</AlertDialog.Cancel>
+      <AlertDialog.Action
+        disabled={dropViewLoading}
+        onclick={async () => {
+          if (!dropViewTarget?.viewName) return
+          dropViewLoading = true
+          try {
+            await window.api.dropView(dropViewTarget.connectionId, dropViewTarget.schemaName, dropViewTarget.viewName, dropViewCascade)
+            dropViewDialogOpen = false
+            await handleRefreshSchemas(dropViewTarget.connectionId)
+          } catch (err) {
+            console.error('뷰 삭제 실패:', err)
+          } finally {
+            dropViewLoading = false
+          }
+        }}
+      >삭제</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <AlertDialog.Root bind:open={deleteDialogOpen}>
   <AlertDialog.Content>

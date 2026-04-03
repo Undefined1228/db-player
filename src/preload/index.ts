@@ -58,6 +58,7 @@ const api = {
     ipcRenderer.on('menu:new-tab', () => callback()),
   onMenuCloseTab: (callback: () => void) =>
     ipcRenderer.on('menu:close-tab', () => callback()),
+  getAppVersion: () => ipcRenderer.invoke('app:version'),
   checkUpdate: () => ipcRenderer.invoke('app:check-update'),
   openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
   onUpdateAvailable: (callback: (version: string) => void) =>
@@ -65,6 +66,25 @@ const api = {
   onUpdateDownloaded: (callback: (version: string) => void) =>
     ipcRenderer.on('update:downloaded', (_e, version) => callback(version)),
   installUpdate: () => ipcRenderer.invoke('update:install'),
+  closeSSHTunnel: (connectionId: number) => ipcRenderer.invoke('ssh:close-tunnel', connectionId),
+  createView: (connectionId: number, schemaName: string, viewName: string, selectQuery: string) =>
+    ipcRenderer.invoke('view:create', connectionId, schemaName, viewName, selectQuery),
+  alterView: (connectionId: number, schemaName: string, viewName: string, newViewName: string | undefined, newSelectQuery: string | undefined) =>
+    ipcRenderer.invoke('view:alter', connectionId, schemaName, viewName, newViewName, newSelectQuery),
+  dropView: (connectionId: number, schemaName: string, viewName: string, cascade: boolean) =>
+    ipcRenderer.invoke('view:drop', connectionId, schemaName, viewName, cascade),
+  createIndex: (connectionId: number, params: Record<string, unknown>) =>
+    ipcRenderer.invoke('index:create', connectionId, params),
+  dropIndex: (connectionId: number, schemaName: string, indexName: string) =>
+    ipcRenderer.invoke('index:drop', connectionId, schemaName, indexName),
+  getSessions: (connectionId: number) =>
+    ipcRenderer.invoke('monitor:sessions', connectionId),
+  killSession: (connectionId: number, sessionId: number, mode: 'cancel' | 'terminate') =>
+    ipcRenderer.invoke('monitor:kill-session', connectionId, sessionId, mode),
+  getLocks: (connectionId: number) =>
+    ipcRenderer.invoke('monitor:locks', connectionId),
+  getTableStats: (connectionId: number) =>
+    ipcRenderer.invoke('monitor:table-stats', connectionId),
 }
 
 if (process.contextIsolated) {

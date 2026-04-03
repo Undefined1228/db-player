@@ -5,44 +5,21 @@
   import { Label } from '$lib/components/ui/label'
   import { Button } from '$lib/components/ui/button'
   import { Checkbox } from '$lib/components/ui/checkbox'
-  import { Plus, Trash2, GripVertical, Loader2 } from 'lucide-svelte'
-
-  interface TableColumnInfo {
-    name: string
-    dataType: string
-    nullable: boolean
-    isPrimaryKey: boolean
-    defaultValue: string | null
-  }
-
-  interface TableFKInfo {
-    constraintName: string
-    localColumns: string[]
-    refSchema: string
-    refTable: string
-    refColumns: string[]
-    onDelete: string
-    onUpdate: string
-  }
+  import { Plus, Trash2, Loader2 } from 'lucide-svelte'
+  import ColumnEditor from './ColumnEditor.svelte'
 
   let {
     open = $bindable(false),
     connectionId,
     dbType,
     schemaName,
-    tableName: initialTableName,
-    initialColumns,
-    initialForeignKeys,
-    onAltered
+    onCreated
   }: {
     open: boolean
     connectionId: number
     dbType: string
     schemaName: string
-    tableName: string
-    initialColumns: TableColumnInfo[]
-    initialForeignKeys: TableFKInfo[]
-    onAltered: () => void
+    onCreated: () => void
   } = $props()
 
   interface ColumnDef {
@@ -53,10 +30,6 @@
     nullable: boolean
     primaryKey: boolean
     defaultValue: string
-    originalName: string | null
-    originalType: string | null
-    originalNullable: boolean | null
-    originalDefaultValue: string | null
   }
 
   interface ForeignKey {
@@ -68,10 +41,9 @@
     refColumns: string[]
     onDelete: string
     onUpdate: string
-    originalConstraintName: string | null
   }
 
-  const TYPE_GROUPS = [
+  const PG_TYPE_GROUPS = [
     { group: '정수', types: ['integer', 'bigint', 'smallint', 'serial', 'bigserial'] },
     { group: '실수', types: ['numeric', 'real', 'double precision'] },
     { group: '문자', types: ['text', 'varchar', 'char'] },
@@ -79,42 +51,25 @@
     { group: '기타', types: ['boolean', 'uuid', 'json', 'jsonb', 'bytea'] }
   ]
 
-  const SIZE_TYPES = new Set(['varchar', 'char', 'numeric'])
+  const MYSQL_TYPE_GROUPS = [
+    { group: '정수', types: ['int', 'bigint', 'smallint', 'tinyint', 'int auto_increment', 'bigint auto_increment'] },
+    { group: '실수', types: ['decimal', 'float', 'double'] },
+    { group: '문자', types: ['varchar', 'char', 'text', 'tinytext', 'mediumtext', 'longtext'] },
+    { group: '날짜/시간', types: ['date', 'time', 'datetime', 'timestamp'] },
+    { group: '기타', types: ['tinyint(1)', 'json', 'blob'] }
+  ]
+
+  const TYPE_GROUPS = $derived((dbType === 'mysql' || dbType === 'mariadb') ? MYSQL_TYPE_GROUPS : PG_TYPE_GROUPS)
+
+  const PG_SIZE_TYPES = new Set(['varchar', 'char', 'numeric'])
+  const MYSQL_SIZE_TYPES = new Set(['varchar', 'char', 'decimal'])
+  const SIZE_TYPES = $derived((dbType === 'mysql' || dbType === 'mariadb') ? MYSQL_SIZE_TYPES : PG_SIZE_TYPES)
 
   const FK_ACTIONS = ['NO ACTION', 'RESTRICT', 'CASCADE', 'SET NULL', 'SET DEFAULT']
 
-  const UDT_MAP: Record<string, string> = {
-    int2: 'smallint',
-    int4: 'integer',
-    int8: 'bigint',
-    float4: 'real',
-    float8: 'double precision',
-    bool: 'boolean',
-    bpchar: 'char',
-  }
-
-  function parseDataType(dataType: string): { type: string; size: string } {
-    const match = dataType.match(/^(.+?)\((.+)\)$/)
-    if (match) {
-      const rawType = UDT_MAP[match[1]] ?? match[1]
-      return { type: rawType, size: match[2] }
-    }
-    const rawType = UDT_MAP[dataType] ?? dataType
-    return { type: rawType, size: '' }
-  }
-
-  function buildColumnTypeStr(type: string, size: string): string {
-    if ((type === 'varchar' || type === 'char') && size) return `${type}(${size})`
-    if (type === 'numeric' && size) return `numeric(${size})`
-    return type
-  }
-
   let tableName = $state('')
-  let columns = $state<ColumnDef[]>([])
+  let columns = $state<ColumnDef[]>([makeColumn()])
   let foreignKeys = $state<ForeignKey[]>([])
-  let droppedColumns = $state<string[]>([])
-  let droppedFkNames = $state<string[]>([])
-  let originalPkColumns = $state<string[]>([])
   let tableNameError = $state(false)
   let columnErrors = $state<Set<number>>(new Set())
   let activeTab = $state('columns')
@@ -131,9 +86,9 @@
 
   $effect(() => {
     if (open) {
-      tableName = initialTableName
-      droppedColumns = []
-      droppedFkNames = []
+      tableName = ''
+      columns = [makeColumn()]
+      foreignKeys = []
       tableNameError = false
       columnErrors = new Set()
       error = null
@@ -142,38 +97,6 @@
       loadingTables = new Set()
       columnsByTable = new Map()
       loadingColumns = new Set()
-
-      originalPkColumns = initialColumns.filter((c) => c.isPrimaryKey).map((c) => c.name)
-
-      columns = initialColumns.map((col) => {
-        const { type, size } = parseDataType(col.dataType)
-        return {
-          id: crypto.randomUUID(),
-          name: col.name,
-          type,
-          size,
-          nullable: col.nullable,
-          primaryKey: col.isPrimaryKey,
-          defaultValue: col.defaultValue ?? '',
-          originalName: col.name,
-          originalType: buildColumnTypeStr(type, size),
-          originalNullable: col.nullable,
-          originalDefaultValue: col.defaultValue ?? '',
-        }
-      })
-
-      foreignKeys = initialForeignKeys.map((fk) => ({
-        id: crypto.randomUUID(),
-        constraintName: fk.constraintName,
-        localColumns: [...fk.localColumns],
-        refSchema: fk.refSchema,
-        refTable: fk.refTable,
-        refColumns: [...fk.refColumns],
-        onDelete: fk.onDelete,
-        onUpdate: fk.onUpdate,
-        originalConstraintName: fk.constraintName,
-      }))
-
       loadSchemas()
     }
   })
@@ -247,11 +170,7 @@
       size: '255',
       nullable: true,
       primaryKey: false,
-      defaultValue: '',
-      originalName: null,
-      originalType: null,
-      originalNullable: null,
-      originalDefaultValue: null,
+      defaultValue: ''
     }
   }
 
@@ -264,8 +183,7 @@
       refTable: '',
       refColumns: [],
       onDelete: 'NO ACTION',
-      onUpdate: 'NO ACTION',
-      originalConstraintName: null,
+      onUpdate: 'NO ACTION'
     }
   }
 
@@ -274,11 +192,7 @@
   }
 
   function removeColumn(idx: number): void {
-    const col = columns[idx]
-    if (col.originalName !== null) {
-      droppedColumns = [...droppedColumns, col.originalName]
-    }
-    const removed = col.name
+    const removed = columns[idx].name
     columns = columns.filter((_, i) => i !== idx)
     foreignKeys = foreignKeys.map((fk) => ({
       ...fk,
@@ -297,7 +211,7 @@
     columns[idx].type = type
     if (type === 'varchar') columns[idx].size = '255'
     else if (type === 'char') columns[idx].size = '1'
-    else if (type === 'numeric') columns[idx].size = '10,2'
+    else if (type === 'numeric' || type === 'decimal') columns[idx].size = '10,2'
     else columns[idx].size = ''
     columnErrors.delete(idx)
     columnErrors = new Set(columnErrors)
@@ -318,10 +232,6 @@
   }
 
   function removeForeignKey(idx: number): void {
-    const fk = foreignKeys[idx]
-    if (fk.originalConstraintName !== null) {
-      droppedFkNames = [...droppedFkNames, fk.originalConstraintName]
-    }
     foreignKeys = foreignKeys.filter((_, i) => i !== idx)
   }
 
@@ -342,33 +252,24 @@
     return valid
   }
 
-  async function handleAlter(): Promise<void> {
+  async function handleCreate(): Promise<void> {
     if (!validate()) return
     saving = true
     error = null
     try {
-      await window.api.alterTable(connectionId, $state.snapshot({
+      await window.api.createTable(connectionId, $state.snapshot({
         schemaName,
         tableName: tableName.trim(),
-        originalTableName: initialTableName,
         columns,
-        droppedColumns,
-        originalPkColumns,
-        foreignKeys,
-        droppedFkNames,
+        foreignKeys
       }))
       open = false
-      onAltered()
+      onCreated()
     } catch (err: unknown) {
       error = err instanceof Error ? err.message : String(err)
     } finally {
       saving = false
     }
-  }
-
-  function sizePlaceholder(type: string): string {
-    if (type === 'numeric') return '정밀도,소수점 (예: 10,2)'
-    return '길이 (예: 255)'
   }
 
   function selectClass(): string {
@@ -379,9 +280,9 @@
 <Dialog.Root bind:open>
   <Dialog.Content class="flex flex-col gap-0 p-0 sm:max-w-4xl max-h-[90vh]">
     <Dialog.Header class="px-6 pt-6 pb-4 border-b border-border">
-      <Dialog.Title>테이블 수정</Dialog.Title>
+      <Dialog.Title>테이블 생성</Dialog.Title>
       <Dialog.Description>
-        <span class="font-mono text-xs">{schemaName}.{initialTableName}</span> 테이블을 수정합니다.
+        <span class="font-mono text-xs">{schemaName}</span> 스키마에 새 테이블을 생성합니다.
       </Dialog.Description>
     </Dialog.Header>
 
@@ -442,65 +343,18 @@
               </thead>
               <tbody>
                 {#each columns as col, idx (col.id)}
-                  <tr class="border-b border-border last:border-0 hover:bg-muted/30 {col.originalName === null ? 'bg-green-500/5' : ''}">
-                    <td class="px-2 py-1.5 text-muted-foreground">
-                      <GripVertical class="h-3.5 w-3.5" />
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <Input
-                        bind:value={col.name}
-                        oninput={() => { columnErrors.delete(idx); columnErrors = new Set(columnErrors) }}
-                        placeholder="column_name"
-                        class="h-7 text-xs {columnErrors.has(idx) ? 'border-destructive-foreground ring-1 ring-destructive-foreground' : ''}"
-                      />
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <select
-                        value={col.type}
-                        onchange={(e) => onTypeChange(idx, (e.target as HTMLSelectElement).value)}
-                        class={selectClass()}
-                      >
-                        {#each TYPE_GROUPS as group}
-                          <optgroup label={group.group}>
-                            {#each group.types as type}
-                              <option value={type}>{type}</option>
-                            {/each}
-                          </optgroup>
-                        {/each}
-                      </select>
-                    </td>
-                    <td class="px-2 py-1.5">
-                      {#if SIZE_TYPES.has(col.type)}
-                        <Input bind:value={col.size} placeholder={sizePlaceholder(col.type)} class="h-7 text-xs" />
-                      {:else}
-                        <span class="text-muted-foreground px-1">—</span>
-                      {/if}
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <div class="flex justify-center">
-                        <Checkbox checked={col.primaryKey} onCheckedChange={() => togglePrimaryKey(idx)} />
-                      </div>
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <div class="flex justify-center">
-                        <Checkbox bind:checked={col.nullable} disabled={col.primaryKey} />
-                      </div>
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <Input bind:value={col.defaultValue} placeholder="없음" class="h-7 text-xs" />
-                    </td>
-                    <td class="px-2 py-1.5">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-6 w-6 text-muted-foreground hover:text-destructive-foreground"
-                        onclick={() => removeColumn(idx)}
-                        disabled={columns.length === 1}
-                      >
-                        <Trash2 class="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
+                  <ColumnEditor
+                    bind:col={columns[idx]}
+                    {idx}
+                    typeGroups={TYPE_GROUPS}
+                    sizeTypes={SIZE_TYPES}
+                    hasError={columnErrors.has(idx)}
+                    canDelete={columns.length > 1}
+                    onTypeChange={(i, t) => onTypeChange(i, t)}
+                    onRemove={(i) => removeColumn(i)}
+                    onTogglePrimaryKey={(i) => togglePrimaryKey(i)}
+                    onNameInput={(i) => { columnErrors.delete(i); columnErrors = new Set(columnErrors) }}
+                  />
                 {/each}
               </tbody>
             </table>
@@ -508,11 +362,6 @@
           {#if columnErrors.size > 0}
             <p class="text-[10px] text-destructive-foreground">
               컬럼 이름은 영문자/밑줄로 시작하고 영문자·숫자·밑줄·$만 사용 가능합니다.
-            </p>
-          {/if}
-          {#if droppedColumns.length > 0}
-            <p class="text-[10px] text-muted-foreground">
-              삭제 예정 컬럼: <span class="font-mono">{droppedColumns.join(', ')}</span>
             </p>
           {/if}
         </Tabs.Content>
@@ -628,7 +477,10 @@
                   <div class="grid grid-cols-2 gap-3">
                     <div class="flex flex-col gap-1">
                       <Label class="text-[11px] text-muted-foreground">ON DELETE</Label>
-                      <select bind:value={fk.onDelete} class={selectClass()}>
+                      <select
+                        bind:value={fk.onDelete}
+                        class={selectClass()}
+                      >
                         {#each FK_ACTIONS as action}
                           <option value={action}>{action}</option>
                         {/each}
@@ -636,7 +488,10 @@
                     </div>
                     <div class="flex flex-col gap-1">
                       <Label class="text-[11px] text-muted-foreground">ON UPDATE</Label>
-                      <select bind:value={fk.onUpdate} class={selectClass()}>
+                      <select
+                        bind:value={fk.onUpdate}
+                        class={selectClass()}
+                      >
                         {#each FK_ACTIONS as action}
                           <option value={action}>{action}</option>
                         {/each}
@@ -658,12 +513,12 @@
     {/if}
     <Dialog.Footer class="px-6 py-4 border-t border-border">
       <Button variant="outline" size="sm" onclick={() => (open = false)} disabled={saving}>취소</Button>
-      <Button size="sm" onclick={handleAlter} disabled={saving}>
+      <Button size="sm" onclick={handleCreate} disabled={saving}>
         {#if saving}
           <Loader2 class="mr-1.5 h-3.5 w-3.5 animate-spin" />
-          저장 중...
+          생성 중...
         {:else}
-          저장
+          생성
         {/if}
       </Button>
     </Dialog.Footer>

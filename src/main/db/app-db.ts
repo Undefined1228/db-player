@@ -36,6 +36,25 @@ export function initAppDb(): void {
       success INTEGER NOT NULL
     )
   `)
+
+  const sshColumns: { name: string; ddl: string }[] = [
+    { name: 'ssh_enabled', ddl: 'ALTER TABLE connections ADD COLUMN ssh_enabled INTEGER DEFAULT 0' },
+    { name: 'ssh_host', ddl: 'ALTER TABLE connections ADD COLUMN ssh_host TEXT' },
+    { name: 'ssh_port', ddl: 'ALTER TABLE connections ADD COLUMN ssh_port INTEGER' },
+    { name: 'ssh_username', ddl: 'ALTER TABLE connections ADD COLUMN ssh_username TEXT' },
+    { name: 'ssh_auth_method', ddl: "ALTER TABLE connections ADD COLUMN ssh_auth_method TEXT DEFAULT 'password'" },
+    { name: 'ssh_password_encrypted', ddl: 'ALTER TABLE connections ADD COLUMN ssh_password_encrypted BLOB' },
+    { name: 'ssh_private_key_encrypted', ddl: 'ALTER TABLE connections ADD COLUMN ssh_private_key_encrypted BLOB' },
+    { name: 'ssh_passphrase_encrypted', ddl: 'ALTER TABLE connections ADD COLUMN ssh_passphrase_encrypted BLOB' },
+  ]
+
+  const existingColumns = (db.pragma('table_info(connections)') as { name: string }[]).map((c) => c.name)
+  for (const col of sshColumns) {
+    if (!existingColumns.includes(col.name)) {
+      db.exec(col.ddl)
+    }
+  }
+  log.info('[app-db] SSH 컬럼 마이그레이션 완료')
 }
 
 export function getDb(): Database.Database {

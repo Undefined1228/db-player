@@ -8,7 +8,7 @@ export interface EditorTab {
   schemaName?: string
   title: string
   query: string
-  type: 'editor' | 'data' | 'erd'
+  type: 'editor' | 'data' | 'erd' | 'monitor'
   objectName?: string
   objectType?: 'table' | 'view' | 'matview' | 'function'
 }
@@ -21,7 +21,7 @@ interface TabsState {
 function createTabsStore() {
   const { subscribe, update } = writable<TabsState>({ tabs: [], activeId: null })
 
-  function openTab(params: { connectionId: number; dbType: string; schemaName?: string; title?: string; type?: 'editor' | 'data' | 'erd'; objectName?: string; objectType?: 'table' | 'view' | 'matview' | 'function' }): void {
+  function openTab(params: { connectionId: number; dbType: string; schemaName?: string; title?: string; type?: 'editor' | 'data' | 'erd' | 'monitor'; objectName?: string; objectType?: 'table' | 'view' | 'matview' | 'function' }): void {
     const id = crypto.randomUUID()
     const conn = get(connections).find((c) => c.id === params.connectionId)
     const title =

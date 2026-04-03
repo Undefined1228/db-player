@@ -21,9 +21,18 @@
 ├── package-lock.json
 ├── package.json
 ├── plans
+│   ├── db-features
+│   │   ├── mariadb.md
+│   │   ├── mysql.md
+│   │   ├── overview.md
+│   │   ├── postgresql.md
+│   │   └── sqlite.md
 │   ├── mysql-table-create.md
-│   └── ux-improvements.md
+│   └── refactor-concentrated-code.md
 ├── README.md
+├── release-notes
+│   ├── v1.1.0.md
+│   └── v1.2.0.md
 ├── remind.md
 ├── resources
 │   └── icon.png
@@ -32,10 +41,29 @@
 │   │   ├── db
 │   │   │   ├── app-db.ts
 │   │   │   ├── connection-repository.ts
+│   │   │   ├── connection-utils.ts
+│   │   │   ├── data-viewer.ts
+│   │   │   ├── db-index.ts
 │   │   │   ├── ddl-builder.ts
+│   │   │   ├── explain.ts
 │   │   │   ├── metadata.ts
-│   │   │   └── test-connection.ts
-│   │   └── index.ts
+│   │   │   ├── monitor.ts
+│   │   │   ├── query.ts
+│   │   │   ├── schema.ts
+│   │   │   ├── ssh-tunnel.ts
+│   │   │   ├── table.ts
+│   │   │   ├── test-connection.ts
+│   │   │   └── view.ts
+│   │   ├── index.ts
+│   │   └── ipc
+│   │       ├── app.ts
+│   │       ├── connection.ts
+│   │       ├── data.ts
+│   │       ├── index.ts
+│   │       ├── monitor.ts
+│   │       ├── query.ts
+│   │       ├── schema.ts
+│   │       └── table.ts
 │   ├── preload
 │   │   ├── index.d.ts
 │   │   └── index.ts
@@ -48,35 +76,54 @@
 │           │   ├── images
 │           │   └── main.css
 │           ├── components
-│           │   ├── AlterTableDialog.svelte
-│           │   ├── CommandPalette.svelte
-│           │   ├── ConnectionContextMenu.svelte
-│           │   ├── ConnectionDialog.svelte
-│           │   ├── CreateSchemaDialog.svelte
-│           │   ├── CreateTableDialog.svelte
-│           │   ├── DataViewerTab.svelte
-│           │   ├── DDLDialog.svelte
-│           │   ├── DropSchemaDialog.svelte
-│           │   ├── EditSchemaDialog.svelte
-│           │   ├── ErDiagramTab.svelte
-│           │   ├── ExplainTreeNode.svelte
-│           │   ├── ExplainViewer.svelte
-│           │   ├── Header.svelte
+│           │   ├── common
+│           │   │   └── JsonViewerModal.svelte
+│           │   ├── connection
+│           │   │   ├── ConnectionContextMenu.svelte
+│           │   │   └── ConnectionDialog.svelte
+│           │   ├── data-viewer
+│           │   │   ├── DataViewerColContextMenu.svelte
+│           │   │   ├── DataViewerTab.svelte
+│           │   │   ├── DataViewerTable.svelte
+│           │   │   └── DataViewerToolbar.svelte
+│           │   ├── er-diagram
+│           │   │   └── ErDiagramTab.svelte
+│           │   ├── explain
+│           │   │   ├── ExplainTreeNode.svelte
+│           │   │   └── ExplainViewer.svelte
 │           │   ├── icons
 │           │   │   ├── DbIcon.svelte
+│           │   │   ├── ic_db_mariadb.png
 │           │   │   ├── ic_db_mysql.png
 │           │   │   ├── ic_db_postgresql.png
 │           │   │   ├── ic_db_sqlite.png
 │           │   │   └── index.ts
-│           │   ├── NewTabDialog.svelte
-│           │   ├── QueryEditor.svelte
-│           │   ├── QueryResultViewer.svelte
-│           │   ├── QueryWorkspace.svelte
-│           │   ├── ResultViewer.svelte
-│           │   ├── SchemaObjectContextMenu.svelte
-│           │   ├── SchemaTree.svelte
-│           │   ├── Sidebar.svelte
-│           │   └── ThemeToggle.svelte
+│           │   ├── layout
+│           │   │   ├── CommandPalette.svelte
+│           │   │   ├── Header.svelte
+│           │   │   ├── NewTabDialog.svelte
+│           │   │   ├── Sidebar.svelte
+│           │   │   └── ThemeToggle.svelte
+│           │   ├── monitor
+│           │   │   └── MonitorTab.svelte
+│           │   ├── query
+│           │   │   ├── QueryEditor.svelte
+│           │   │   ├── QueryResultViewer.svelte
+│           │   │   ├── QueryWorkspace.svelte
+│           │   │   └── ResultViewer.svelte
+│           │   ├── schema
+│           │   │   ├── CreateSchemaDialog.svelte
+│           │   │   ├── DropSchemaDialog.svelte
+│           │   │   ├── EditSchemaDialog.svelte
+│           │   │   ├── SchemaObjectContextMenu.svelte
+│           │   │   └── SchemaTree.svelte
+│           │   └── table
+│           │       ├── AlterTableDialog.svelte
+│           │       ├── ColumnEditor.svelte
+│           │       ├── CreateIndexDialog.svelte
+│           │       ├── CreateTableDialog.svelte
+│           │       ├── CreateViewDialog.svelte
+│           │       └── DDLDialog.svelte
 │           ├── env.d.ts
 │           ├── lib
 │           │   ├── actions
@@ -200,10 +247,12 @@
 ├── tree.txt
 ├── tsconfig.json
 ├── tsconfig.node.json
+├── tsconfig.node.tsbuildinfo
 ├── tsconfig.web.json
 └── work-logs
     ├── 2026-03-30.md
     ├── 2026-03-31.md
-    └── 2026-04-01.md
+    ├── 2026-04-01.md
+    └── 2026-04-02.md
 
-39 directories, 168 files
+52 directories, 204 files

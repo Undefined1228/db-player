@@ -27,6 +27,10 @@
         : objectType === 'matview'
           ? '구체화된 뷰 삭제'
           : '뷰 삭제'
+
+  const showAlterSection = (objectType === 'table' && onAlter) ||
+    (objectType === 'view' && onAlter) ||
+    (objectType === 'matview' && dbType === 'postgresql')
 </script>
 
 <ContextMenu.Root>
@@ -45,12 +49,15 @@
       <ContextMenu.Item onclick={onCopyDDL}>DDL 복사</ContextMenu.Item>
     {/if}
 
-    {#if objectType === 'table' && onAlter || objectType === 'table' || (objectType === 'matview' && dbType === 'postgresql')}
+    {#if showAlterSection}
       <ContextMenu.Separator />
       {#if objectType === 'table' && onAlter}
         <ContextMenu.Item onclick={onAlter}>테이블 수정</ContextMenu.Item>
       {/if}
-      {#if objectType === 'table' || (objectType === 'matview' && dbType === 'postgresql')}
+      {#if objectType === 'view' && onAlter}
+        <ContextMenu.Item onclick={onAlter}>뷰 수정</ContextMenu.Item>
+      {/if}
+      {#if objectType === 'table' || objectType === 'view' || (objectType === 'matview' && dbType === 'postgresql')}
         <ContextMenu.Item onclick={onRefresh}>새로고침</ContextMenu.Item>
       {/if}
     {/if}

@@ -13,7 +13,7 @@
   import { PaneGroup, Pane, Handle } from '$lib/components/ui/resizable'
   import { theme } from '$lib/stores/theme'
   import QueryResultViewer from './QueryResultViewer.svelte'
-  import ExplainViewer from './ExplainViewer.svelte'
+  import ExplainViewer from '../explain/ExplainViewer.svelte'
 
   const isMac = navigator.platform.toUpperCase().includes('MAC')
   const modKey = isMac ? '⌘' : 'Ctrl'
