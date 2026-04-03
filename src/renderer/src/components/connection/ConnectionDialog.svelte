@@ -291,13 +291,13 @@
 </script>
 
 <Dialog.Root bind:open>
-  <Dialog.Content class="sm:max-w-[500px]">
-    <Dialog.Header>
+  <Dialog.Content class="sm:max-w-[500px] flex flex-col max-h-[90vh]">
+    <Dialog.Header class="shrink-0">
       <Dialog.Title>{initialData ? '연결 편집' : '새 연결'}</Dialog.Title>
       <Dialog.Description>{initialData ? '연결 정보를 수정하세요.' : '데이터베이스 연결 정보를 입력하세요.'}</Dialog.Description>
     </Dialog.Header>
 
-    <div class="grid gap-4 py-4">
+    <div class="grid gap-4 py-4 overflow-y-auto min-h-0">
       <div class="grid grid-cols-4 items-center gap-4">
         <Label class="text-right text-xs text-muted-foreground">DataGrip</Label>
         <div class="col-span-3 flex flex-col gap-1">
@@ -419,7 +419,7 @@
 
         <div class="grid grid-cols-4 items-center gap-4">
           <Label class="text-right text-xs">URL 미리보기</Label>
-          <div class="col-span-3 rounded-md border border-border bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
+          <div class="col-span-3 rounded-md border border-border bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground overflow-x-auto whitespace-nowrap">
             {generatedUrl}
           </div>
         </div>
@@ -519,12 +519,12 @@
     </div>
 
     {#if testResult}
-      <div class="rounded-md px-3 py-2 text-xs {testResult.success ? 'bg-green-500/10 text-green-500' : 'bg-destructive/10 text-destructive-foreground'}">
+      <div class="shrink-0 rounded-md px-3 py-2 text-xs {testResult.success ? 'bg-green-500/10 text-green-500' : 'bg-destructive/10 text-destructive-foreground'}">
         {testResult.message}
       </div>
     {/if}
 
-    <Dialog.Footer class="flex items-center justify-between sm:justify-between">
+    <Dialog.Footer class="shrink-0 flex items-center justify-between sm:justify-between">
       <Button variant="secondary" size="sm" onclick={handleTest} disabled={testing}>
         {#if testing}
           <Loader2 class="mr-1.5 h-3.5 w-3.5 animate-spin" />
