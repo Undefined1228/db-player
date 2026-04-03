@@ -355,7 +355,7 @@
                   {/if}
 
                   <!-- Indexes -->
-                  {#if table.indexes.length > 0 || dbType === 'postgresql'}
+                  {#if table.indexes.length > 0 || dbType !== 'sqlite'}
                     <div>
                       <ContextMenu.Root>
                         <ContextMenu.Trigger>
@@ -368,7 +368,7 @@
                             <span class="text-[10px] text-muted-foreground">Indexes ({table.indexes.length})</span>
                           </button>
                         </ContextMenu.Trigger>
-                        {#if dbType === 'postgresql'}
+                        {#if dbType !== 'sqlite'}
                           <ContextMenu.Content class="w-36">
                             <ContextMenu.Item onclick={() => onCreateIndex({ tableName: table.name, columns: table.columns })}>인덱스 생성</ContextMenu.Item>
                           </ContextMenu.Content>
@@ -392,7 +392,7 @@
     </div>
   {/if}
 
-  {#if objects.views.length > 0 || dbType === 'postgresql'}
+  {#if objects.views.length > 0 || dbType !== 'sqlite'}
     <div>
       <ContextMenu.Root>
         <ContextMenu.Trigger>
@@ -402,7 +402,7 @@
             <span class="text-[11px] text-muted-foreground">Views ({objects.views.length})</span>
           </button>
         </ContextMenu.Trigger>
-        {#if dbType === 'postgresql'}
+        {#if dbType !== 'sqlite'}
           <ContextMenu.Content class="w-40">
             <ContextMenu.Item onclick={onCreateView}>뷰 생성</ContextMenu.Item>
           </ContextMenu.Content>

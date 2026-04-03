@@ -195,6 +195,12 @@ export async function getLocks(connectionId: number): Promise<LockRow[]> {
           waitingQuery: r['waiting_query'] ? String(r['waiting_query']) : null,
           blockingQuery: r['blocking_query'] ? String(r['blocking_query']) : null,
         }))
+      } catch (err: unknown) {
+        const mysqlErr = err as { code?: string }
+        if (mysqlErr?.code === 'ER_TABLEACCESS_DENIED_ERROR') {
+          return []
+        }
+        throw err
       } finally {
         if (connection) await connection.end().catch(() => {})
       }
