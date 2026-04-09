@@ -163,13 +163,62 @@
         return editedData[rowIdx]?.[col] !== undefined && editedData[rowIdx][col] !== row[col]
     }
 
+    function isNumericCol(col: string): boolean {
+        const type = columnTypes[col] ?? ''
+        return /^(int2|int4|int8|float4|float8|numeric|money|oid|xid|cid|serial|bigserial|smallint|integer|bigint|real|double precision|decimal)/.test(type)
+    }
+
+    function isDateOnlyCol(col: string): boolean {
+        return columnTypes[col] === 'date'
+    }
+
+    function isTimeOnlyCol(col: string): boolean {
+        const t = columnTypes[col] ?? ''
+        return t === 'time' || t === 'timetz'
+    }
+
+    function isDatetimeCol(col: string): boolean {
+        return (columnTypes[col] ?? '').startsWith('timestamp')
+    }
+
+    function formatDateForInput(value: unknown): string {
+        if (value === null || value === undefined) return ''
+        try {
+            const d = new Date(String(value))
+            if (isNaN(d.getTime())) return String(value)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            return `${y}-${m}-${day}`
+        } catch { return '' }
+    }
+
+    function formatDatetimeForInput(value: unknown): string {
+        if (value === null || value === undefined) return ''
+        try {
+            const d = new Date(String(value))
+            if (isNaN(d.getTime())) return String(value)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            const h = String(d.getHours()).padStart(2, '0')
+            const min = String(d.getMinutes()).padStart(2, '0')
+            return `${y}-${m}-${day}T${h}:${min}`
+        } catch { return '' }
+    }
+
+    function formatTimeForInput(value: unknown): string {
+        if (value === null || value === undefined) return ''
+        return String(value).slice(0, 8)
+    }
+
     async function handleDblClick(row: Record<string, unknown>, col: string): Promise<void> {
         const rowIdx = getRowIdx(row)
         oneditingcell({ rowIdx, col })
         await tick()
-        const input = document.querySelector<HTMLInputElement>(`[data-cell="${rowIdx}-${col}"]`)
-        input?.focus()
-        input?.select()
+        const el = document.querySelector<HTMLElement>(`[data-cell="${rowIdx}-${col}"]`)
+        if (el instanceof HTMLInputElement) { el.focus(); el.select() }
+        else el?.focus()
     }
 
     function handleCellKeydown(e: KeyboardEvent, row: Record<string, unknown>, col: string): void {
@@ -198,6 +247,14 @@
             if (nextRi >= 0 && nextRi < pagedRows.length) void handleDblClick(pagedRows[nextRi], displayColumns[nextCi])
         }
     }
+
+    let numericInvalid = $state(false)
+    let newRowNumericInvalid = $state<Record<string, boolean>>({})
+
+    $effect(() => {
+        editingCell
+        numericInvalid = false
+    })
 
     let prevNewRowsLength = $state(0)
     $effect(() => {
@@ -287,22 +344,55 @@
                         {#each displayColumns as col, ci}
                             <td class="border-b border-primary/30 p-0 whitespace-nowrap">
                                 {#if isBooleanCol(col)}
-                                    <div class="flex items-center px-3 py-1.5">
-                                        <input
-                                            data-new-cell="{nri}-{ci}"
-                                            type="checkbox"
-                                            class="accent-primary cursor-pointer"
-                                            checked={isTruthyBool(nr[col])}
-                                            onchange={(e) => onnewrowinput(nri, col, (e.target as HTMLInputElement).checked)}
-                                        />
-                                    </div>
+                                    <select
+                                        data-new-cell="{nri}-{ci}"
+                                        class="w-full bg-transparent px-2 py-1.5 text-[12px] text-foreground outline-none focus:outline focus:outline-1 focus:outline-primary cursor-pointer"
+                                        value={nr[col] === null || nr[col] === undefined ? '__null__' : isTruthyBool(nr[col]) ? 'true' : 'false'}
+                                        onchange={(e) => onnewrowinput(nri, col, (e.target as HTMLSelectElement).value === '__null__' ? null : (e.target as HTMLSelectElement).value === 'true')}
+                                        onkeydown={(e) => onnewrowkeydown(e, nri)}
+                                    >
+                                        <option value="__null__">NULL</option>
+                                        <option value="true">true</option>
+                                        <option value="false">false</option>
+                                    </select>
+                                {:else if isDateOnlyCol(col)}
+                                    <input
+                                        type="date"
+                                        data-new-cell="{nri}-{ci}"
+                                        class="w-full min-w-20 bg-transparent px-3 py-1.5 text-[12px] text-foreground outline-none focus:outline focus:outline-1 focus:outline-primary"
+                                        value={String(nr[col] ?? '')}
+                                        onchange={(e) => onnewrowinput(nri, col, (e.target as HTMLInputElement).value)}
+                                        onkeydown={(e) => onnewrowkeydown(e, nri)}
+                                    />
+                                {:else if isDatetimeCol(col)}
+                                    <input
+                                        type="datetime-local"
+                                        data-new-cell="{nri}-{ci}"
+                                        class="w-full min-w-20 bg-transparent px-3 py-1.5 text-[12px] text-foreground outline-none focus:outline focus:outline-1 focus:outline-primary"
+                                        value={String(nr[col] ?? '')}
+                                        onchange={(e) => onnewrowinput(nri, col, (e.target as HTMLInputElement).value)}
+                                        onkeydown={(e) => onnewrowkeydown(e, nri)}
+                                    />
+                                {:else if isTimeOnlyCol(col)}
+                                    <input
+                                        type="time"
+                                        data-new-cell="{nri}-{ci}"
+                                        class="w-full min-w-20 bg-transparent px-3 py-1.5 text-[12px] text-foreground outline-none focus:outline focus:outline-1 focus:outline-primary"
+                                        value={String(nr[col] ?? '')}
+                                        onchange={(e) => onnewrowinput(nri, col, (e.target as HTMLInputElement).value)}
+                                        onkeydown={(e) => onnewrowkeydown(e, nri)}
+                                    />
                                 {:else}
                                     <input
                                         data-new-cell="{nri}-{ci}"
-                                        class="w-full min-w-20 bg-transparent px-3 py-1.5 text-[12px] text-foreground outline-none focus:outline focus:outline-1 focus:outline-primary"
+                                        class="{isNumericCol(col) && newRowNumericInvalid[`${nri}-${col}`] ? 'w-full min-w-20 bg-transparent px-3 py-1.5 text-[12px] text-foreground outline outline-1 outline-destructive' : 'w-full min-w-20 bg-transparent px-3 py-1.5 text-[12px] text-foreground outline-none focus:outline focus:outline-1 focus:outline-primary'}"
                                         placeholder={col}
                                         value={String(nr[col] ?? '')}
-                                        oninput={(e) => onnewrowinput(nri, col, (e.target as HTMLInputElement).value)}
+                                        oninput={(e) => {
+                                            const v = (e.target as HTMLInputElement).value
+                                            if (isNumericCol(col)) newRowNumericInvalid = { ...newRowNumericInvalid, [`${nri}-${col}`]: v !== '' && isNaN(Number(v)) }
+                                            onnewrowinput(nri, col, v)
+                                        }}
                                         onkeydown={(e) => onnewrowkeydown(e, nri)}
                                     />
                                 {/if}
@@ -358,31 +448,78 @@
                             class="border-b border-border p-0 whitespace-nowrap {frozen ? 'bg-background relative' : (changed && !isDeleted ? 'bg-amber-500/10' : '')} {isLastFrozen(col) ? 'border-r-2 border-r-primary/30' : ''}"
                             style={getFrozenStyle(col, 1, frozen ? 'var(--color-background)' : '')}
                             title={changed && !isDeleted ? `원래 값: ${originalValue === null || originalValue === undefined ? 'NULL' : originalValue === '' ? '(빈 문자열)' : String(originalValue)}` : undefined}
-                            ondblclick={() => { if (!isDeleted && !readonly && !isBooleanCol(col)) handleDblClick(row, col) }}
+                            ondblclick={() => { if (!isDeleted && !readonly) handleDblClick(row, col) }}
                         >
                             {#if frozen}
                                 <div class="absolute inset-0 pointer-events-none {changed && !isDeleted ? 'bg-amber-500/10' : isDeleted ? 'bg-destructive/10' : isSelected ? 'bg-primary/5' : Object.keys(editedData[rowIdx] ?? {}).length > 0 ? 'bg-amber-500/5' : ''}"></div>
                             {/if}
-                            {#if isBooleanCol(col)}
+                            {#if isEditing}
+                                {#if isBooleanCol(col)}
+                                    <select
+                                        data-cell="{rowIdx}-{col}"
+                                        class="h-full w-full bg-primary/5 px-2 py-1.5 text-[12px] text-foreground outline outline-1 outline-primary cursor-pointer"
+                                        value={value === null || value === undefined ? '__null__' : isTruthyBool(value) ? 'true' : 'false'}
+                                        onchange={(e) => { oncellinput(row, col, (e.target as HTMLSelectElement).value === '__null__' ? null : (e.target as HTMLSelectElement).value === 'true'); oneditingcell(null) }}
+                                        onkeydown={(e) => { if (e.key === 'Escape') oneditingcell(null) }}
+                                        onblur={() => oneditingcell(null)}
+                                    >
+                                        <option value="__null__">NULL</option>
+                                        <option value="true">true</option>
+                                        <option value="false">false</option>
+                                    </select>
+                                {:else if isDateOnlyCol(col)}
+                                    <input
+                                        type="date"
+                                        data-cell="{rowIdx}-{col}"
+                                        class="h-full w-full min-w-20 bg-primary/5 px-3 py-1.5 text-[12px] text-foreground outline outline-1 outline-primary"
+                                        value={formatDateForInput(value)}
+                                        onchange={(e) => oncellinput(row, col, (e.target as HTMLInputElement).value)}
+                                        onkeydown={(e) => handleCellKeydown(e, row, col)}
+                                        onblur={() => oneditingcell(null)}
+                                    />
+                                {:else if isDatetimeCol(col)}
+                                    <input
+                                        type="datetime-local"
+                                        data-cell="{rowIdx}-{col}"
+                                        class="h-full w-full min-w-20 bg-primary/5 px-3 py-1.5 text-[12px] text-foreground outline outline-1 outline-primary"
+                                        value={formatDatetimeForInput(value)}
+                                        onchange={(e) => oncellinput(row, col, (e.target as HTMLInputElement).value)}
+                                        onkeydown={(e) => handleCellKeydown(e, row, col)}
+                                        onblur={() => oneditingcell(null)}
+                                    />
+                                {:else if isTimeOnlyCol(col)}
+                                    <input
+                                        type="time"
+                                        data-cell="{rowIdx}-{col}"
+                                        class="h-full w-full min-w-20 bg-primary/5 px-3 py-1.5 text-[12px] text-foreground outline outline-1 outline-primary"
+                                        value={formatTimeForInput(value)}
+                                        onchange={(e) => oncellinput(row, col, (e.target as HTMLInputElement).value)}
+                                        onkeydown={(e) => handleCellKeydown(e, row, col)}
+                                        onblur={() => oneditingcell(null)}
+                                    />
+                                {:else}
+                                    <input
+                                        data-cell="{rowIdx}-{col}"
+                                        class="{isNumericCol(col) && numericInvalid ? 'h-full w-full min-w-20 bg-primary/5 px-3 py-1.5 text-[12px] text-foreground outline outline-1 outline-destructive' : `h-full w-full min-w-20 bg-primary/5 px-3 py-1.5 text-[12px] ${value === null ? 'text-muted-foreground/50 italic' : 'text-foreground'} outline outline-1 outline-primary`}"
+                                        value={value === null ? '' : String(value ?? '')}
+                                        placeholder={value === null ? 'NULL' : ''}
+                                        oninput={(e) => {
+                                            const v = (e.target as HTMLInputElement).value
+                                            if (isNumericCol(col)) numericInvalid = v !== '' && isNaN(Number(v))
+                                            oncellinput(row, col, v)
+                                        }}
+                                        onkeydown={(e) => handleCellKeydown(e, row, col)}
+                                        onblur={() => { oneditingcell(null) }}
+                                    />
+                                {/if}
+                            {:else if isBooleanCol(col)}
                                 <div class="px-3 py-1.5">
                                     <input
                                         type="checkbox"
-                                        class="accent-primary {!isDeleted && !readonly ? 'cursor-pointer' : 'cursor-default'}"
+                                        class="accent-primary pointer-events-none {isDeleted ? 'opacity-50' : ''}"
                                         checked={isTruthyBool(value)}
-                                        disabled={isDeleted || readonly}
-                                        onchange={(e) => oncellinput(row, col, (e.target as HTMLInputElement).checked)}
                                     />
                                 </div>
-                            {:else if isEditing}
-                                <input
-                                    data-cell="{rowIdx}-{col}"
-                                    class="h-full w-full min-w-20 bg-primary/5 px-3 py-1.5 text-[12px] {value === null ? 'text-muted-foreground/50 italic' : 'text-foreground'} outline outline-1 outline-primary"
-                                    value={value === null ? '' : String(value ?? '')}
-                                    placeholder={value === null ? 'NULL' : ''}
-                                    oninput={(e) => oncellinput(row, col, (e.target as HTMLInputElement).value)}
-                                    onkeydown={(e) => handleCellKeydown(e, row, col)}
-                                    onblur={() => { oneditingcell(null) }}
-                                />
                             {:else}
                                 {@const isJson = !isDeleted && tryParseJson(value) !== null}
                                 <div

@@ -108,6 +108,18 @@ app.whenReady().then(() => {
       ]
     }] : []),
     {
+      label: '편집',
+      submenu: [
+        { role: 'undo' as const, label: '실행 취소' },
+        { role: 'redo' as const, label: '다시 실행' },
+        { type: 'separator' as const },
+        { role: 'cut' as const, label: '잘라내기' },
+        { role: 'copy' as const, label: '복사' },
+        { role: 'paste' as const, label: '붙여넣기' },
+        { role: 'selectAll' as const, label: '전체 선택' },
+      ]
+    },
+    {
       label: '파일',
       submenu: [
         {
