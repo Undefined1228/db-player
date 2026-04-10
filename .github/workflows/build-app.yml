@@ -1,4 +1,4 @@
-name: Build Electron (Windows + Mac)
+name: Build Electron (Windows)
 
 on:
   push:
@@ -41,48 +41,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-  build-mac:
-    runs-on: macos-latest
-    steps:
-      - name: Free disk space
-        run: |
-          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes
-          sudo rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport
-          df -h
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Set version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: npm version --no-git-tag-version ${{ github.ref_name }}
-
-      - name: Install dependencies
-        run: npm ci --include=dev
-
-      - name: Build Electron app for Mac (Apple Silicon)
-        run: npm run build:mac:ci
-
-      - name: Upload Mac artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: db-player-mac
-          path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.yml
-          if-no-files-found: warn
-          retention-days: 3
-
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-windows, build-mac]
+    needs: [build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -97,19 +58,12 @@ jobs:
           name: db-player-windows
           path: release-assets/windows
 
-      - name: Download Mac artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: db-player-mac
-          path: release-assets/mac
-
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           body_path: release-notes/${{ github.ref_name }}.md
           files: |
             release-assets/**/*.exe
-            release-assets/**/*.dmg
             release-assets/windows/**/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
