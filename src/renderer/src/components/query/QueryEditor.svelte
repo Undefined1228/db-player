@@ -5,6 +5,7 @@
   import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
   import { EditorState, Compartment } from '@codemirror/state'
   import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+  import { search, searchKeymap } from '@codemirror/search'
   import { sql, PostgreSQL, MySQL, SQLite as SQLiteDialect, type SQLDialect } from '@codemirror/lang-sql'
   import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
   import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
@@ -178,6 +179,53 @@
       fontWeight: '600',
       color: 'hsl(var(--primary))',
     },
+    '.cm-search': {
+      display: 'flex',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: '4px',
+      padding: '6px 8px',
+      backgroundColor: 'hsl(var(--background))',
+      borderBottom: '1px solid hsl(var(--border))',
+    },
+    '.cm-search label': {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px',
+      fontSize: '11px',
+      color: 'hsl(var(--muted-foreground))',
+    },
+    '.cm-textfield': {
+      height: '24px',
+      padding: '0 8px',
+      fontSize: '12px',
+      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      backgroundColor: 'hsl(var(--background))',
+      color: 'hsl(var(--foreground))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '4px',
+      outline: 'none',
+    },
+    '.cm-textfield:focus': {
+      borderColor: 'hsl(var(--primary))',
+      boxShadow: '0 0 0 1px hsl(var(--primary) / 0.4)',
+    },
+    '.cm-button': {
+      height: '24px',
+      padding: '0 10px',
+      fontSize: '11px',
+      backgroundColor: 'hsl(var(--muted))',
+      color: 'hsl(var(--foreground))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '4px',
+      cursor: 'pointer',
+    },
+    '.cm-button:hover': {
+      backgroundColor: 'hsl(var(--accent))',
+    },
+    '.cm-search input[type=checkbox]': {
+      accentColor: 'hsl(var(--primary))',
+    },
   })
 
   function buildHighlightExtension() {
@@ -202,7 +250,8 @@
           highlightActiveLine(),
           highlightActiveLineGutter(),
           EditorView.contentAttributes.of({ autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false' }),
-          keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+          keymap.of([...searchKeymap, ...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+          search({ top: true }),
           baseTheme,
           autocompletion({ activateOnTyping: true, activateOnTypingDelay: 0, interactionDelay: 0, maxRenderedOptions: 15 }),
           highlightCompartment.of(buildHighlightExtension()),

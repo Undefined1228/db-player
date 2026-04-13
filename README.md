@@ -88,9 +88,9 @@ src/
 
 ## 빌드 및 배포
 
-| 플랫폼 | 방식 |
-|--------|------|
-| Windows | GitHub Actions CI 자동 빌드 → Release 첨부 |
-| macOS | 로컬에서 `npm run build:mac` 빌드 후 Release에 수동 업로드 |
+| 플랫폼 | 명령어 |
+|--------|--------|
+| macOS | `npm run build:mac` |
+| Windows | `npm run build:win` |
 
-태그 푸시(`v*`) 시 Windows 빌드가 자동으로 실행되어 GitHub Release가 생성된다.
+빌드 결과물은 `dist/` 디렉토리에 생성된다.
