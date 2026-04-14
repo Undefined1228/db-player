@@ -112,18 +112,18 @@
       lineHeight: '1.6',
     },
     '.cm-content': { padding: '12px 16px' },
-    '.cm-cursor': { borderLeftColor: 'hsl(var(--foreground))' },
-    '.cm-activeLine': { backgroundColor: 'hsl(var(--muted) / 0.3)' },
-    '.cm-selectionBackground': { backgroundColor: 'hsl(var(--primary) / 0.2) !important' },
-    '&.cm-focused .cm-selectionBackground': { backgroundColor: 'hsl(var(--primary) / 0.2) !important' },
+    '.cm-cursor': { borderLeftColor: 'var(--color-foreground)' },
+    '.cm-activeLine': { backgroundColor: 'color-mix(in oklch, var(--color-muted) 30%, transparent)' },
+    '.cm-selectionBackground': { backgroundColor: 'color-mix(in oklch, var(--color-primary) 20%, transparent) !important' },
+    '&.cm-focused .cm-selectionBackground': { backgroundColor: 'color-mix(in oklch, var(--color-primary) 20%, transparent) !important' },
     '.cm-gutters': {
-      backgroundColor: 'hsl(var(--background))',
-      borderRight: '1px solid hsl(var(--border))',
-      color: 'hsl(var(--muted-foreground) / 0.5)',
+      backgroundColor: 'var(--color-background)',
+      borderRight: '1px solid var(--color-border)',
+      color: 'color-mix(in oklch, var(--color-muted-foreground) 50%, transparent)',
     },
     '.cm-activeLineGutter': {
-      backgroundColor: 'hsl(var(--muted) / 0.4)',
-      color: 'hsl(var(--muted-foreground) / 0.8)',
+      backgroundColor: 'color-mix(in oklch, var(--color-muted) 40%, transparent)',
+      color: 'color-mix(in oklch, var(--color-muted-foreground) 80%, transparent)',
     },
     '.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 4px', minWidth: '32px' },
     '.cm-lintRange-error': {
@@ -133,8 +133,8 @@
     },
     '.cm-lint-marker-error': { color: '#ef4444' },
     '.cm-tooltip': {
-      border: '1px solid hsl(var(--border))',
-      backgroundColor: 'hsl(var(--popover))',
+      border: '1px solid var(--color-border)',
+      backgroundColor: 'var(--color-popover)',
       borderRadius: '6px',
       boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
       overflow: 'hidden',
@@ -151,33 +151,33 @@
       padding: '4px 10px',
       borderRadius: '4px',
       fontSize: '12px',
-      color: 'hsl(var(--popover-foreground))',
+      color: 'var(--color-popover-foreground)',
       display: 'flex',
       alignItems: 'center',
       gap: '6px',
     },
     '.cm-tooltip-autocomplete ul li[aria-selected]': {
-      backgroundColor: 'hsl(var(--primary))',
-      color: 'hsl(var(--primary-foreground))',
+      backgroundColor: 'var(--color-primary)',
+      color: 'var(--color-primary-foreground)',
     },
     '.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail': {
-      color: 'hsl(var(--primary-foreground) / 0.7)',
+      color: 'color-mix(in oklch, var(--color-primary-foreground) 70%, transparent)',
     },
     '.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionMatchedText': {
-      color: 'hsl(var(--primary-foreground))',
+      color: 'var(--color-primary-foreground)',
       fontWeight: '700',
     },
     '.cm-completionLabel': { fontSize: '12px' },
     '.cm-completionDetail': {
       fontSize: '11px',
-      color: 'hsl(var(--muted-foreground))',
+      color: 'var(--color-muted-foreground)',
       marginLeft: '4px',
       fontStyle: 'italic',
     },
     '.cm-completionMatchedText': {
       textDecoration: 'none',
       fontWeight: '600',
-      color: 'hsl(var(--primary))',
+      color: 'var(--color-primary)',
     },
     '.cm-search': {
       display: 'flex',
@@ -185,46 +185,46 @@
       flexWrap: 'wrap',
       gap: '4px',
       padding: '6px 8px',
-      backgroundColor: 'hsl(var(--background))',
-      borderBottom: '1px solid hsl(var(--border))',
+      backgroundColor: 'var(--color-background)',
+      borderBottom: '1px solid var(--color-border)',
     },
     '.cm-search label': {
       display: 'flex',
       alignItems: 'center',
       gap: '4px',
       fontSize: '11px',
-      color: 'hsl(var(--muted-foreground))',
+      color: 'var(--color-muted-foreground)',
     },
     '.cm-textfield': {
       height: '24px',
       padding: '0 8px',
       fontSize: '12px',
       fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-      backgroundColor: 'hsl(var(--background))',
-      color: 'hsl(var(--foreground))',
-      border: '1px solid hsl(var(--border))',
+      backgroundColor: 'var(--color-background)',
+      color: 'var(--color-foreground)',
+      border: '1px solid var(--color-border)',
       borderRadius: '4px',
       outline: 'none',
     },
     '.cm-textfield:focus': {
-      borderColor: 'hsl(var(--primary))',
-      boxShadow: '0 0 0 1px hsl(var(--primary) / 0.4)',
+      borderColor: 'var(--color-primary)',
+      boxShadow: '0 0 0 1px color-mix(in oklch, var(--color-primary) 40%, transparent)',
     },
     '.cm-button': {
       height: '24px',
       padding: '0 10px',
       fontSize: '11px',
-      backgroundColor: 'hsl(var(--muted))',
-      color: 'hsl(var(--foreground))',
-      border: '1px solid hsl(var(--border))',
+      backgroundColor: 'var(--color-muted)',
+      color: 'var(--color-foreground)',
+      border: '1px solid var(--color-border)',
       borderRadius: '4px',
       cursor: 'pointer',
     },
     '.cm-button:hover': {
-      backgroundColor: 'hsl(var(--accent))',
+      backgroundColor: 'var(--color-accent)',
     },
     '.cm-search input[type=checkbox]': {
-      accentColor: 'hsl(var(--primary))',
+      accentColor: 'var(--color-primary)',
     },
   })
 
@@ -250,7 +250,10 @@
           highlightActiveLine(),
           highlightActiveLineGutter(),
           EditorView.contentAttributes.of({ autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false' }),
-          keymap.of([...searchKeymap, ...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+          keymap.of([
+            { key: 'Mod-Enter', run: () => { void runQuery(); return true } },
+            ...searchKeymap, ...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab,
+          ]),
           search({ top: true }),
           baseTheme,
           autocompletion({ activateOnTyping: true, activateOnTypingDelay: 0, interactionDelay: 0, maxRenderedOptions: 15 }),
@@ -268,16 +271,6 @@
             if (update.docChanged) {
               onQueryChange(update.state.doc.toString())
             }
-          }),
-          EditorView.domEventHandlers({
-            keydown(e) {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault()
-                void runQuery()
-                return true
-              }
-              return false
-            },
           }),
         ],
       }),
