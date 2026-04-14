@@ -258,7 +258,7 @@
 
     function exportCsv(): void {
         const escape = (v: unknown): string => {
-            const s = v === null || v === undefined ? '' : String(v)
+            const s = v === null || v === undefined ? '' : v instanceof Date ? v.toISOString() : String(v)
             return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
         }
         const header = columns.join(',')
@@ -279,7 +279,7 @@
         const selectedRowData = rows.filter((r) => selectedRows.has(r.__rowIdx as number))
         if (selectedRowData.length === 0) return
         const escape = (v: unknown): string => {
-            const s = v === null || v === undefined ? '' : String(v)
+            const s = v === null || v === undefined ? '' : v instanceof Date ? v.toISOString() : String(v)
             return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
         }
         const header = columns.join(',')

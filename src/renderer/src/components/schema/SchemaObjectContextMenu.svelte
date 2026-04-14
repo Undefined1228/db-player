@@ -13,9 +13,10 @@
     onRefresh: () => void
     onAlter?: () => void
     onCopyDDL?: () => void
+    onImportCsv?: () => void
   }
 
-  let { objectType, dbType, children, onSelectData, onOpenEditor, onViewDDL, onDrop, onRefresh, onAlter, onCopyDDL }: Props =
+  let { objectType, dbType, children, onSelectData, onOpenEditor, onViewDDL, onDrop, onRefresh, onAlter, onCopyDDL, onImportCsv }: Props =
     $props()
 
   const ddlLabel = $derived(objectType === 'function' ? '함수 정의 보기' : 'DDL 보기')
@@ -62,6 +63,11 @@
       {#if objectType === 'table' || objectType === 'view' || (objectType === 'matview' && dbType === 'postgresql')}
         <ContextMenu.Item onclick={onRefresh}>새로고침</ContextMenu.Item>
       {/if}
+    {/if}
+
+    {#if objectType === 'table' && onImportCsv}
+      <ContextMenu.Separator />
+      <ContextMenu.Item onclick={onImportCsv}>CSV로 가져오기</ContextMenu.Item>
     {/if}
 
     <ContextMenu.Separator />

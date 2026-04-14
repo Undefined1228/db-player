@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import {
   getSchemaObjects,
   getTableNames,
@@ -14,6 +14,7 @@ import {
   type CreateIndexParams
 } from '../db/metadata'
 import type { CreateTableParams, AlterTableParams } from '../db/ddl-builder'
+import { previewCsv, importCsvToTable, type CsvImportParams } from '../db/csv-import'
 
 /**
  * 테이블, 뷰, 인덱스 관련 IPC 핸들러를 등록한다.
@@ -69,5 +70,25 @@ export function register(): void {
 
   ipcMain.handle('db:schema-objects', async (_event, connectionId: number, schemaName: string) => {
     return getSchemaObjects(connectionId, schemaName)
+  })
+
+  ipcMain.handle('csv:pick-file', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('csv:preview', async (_event, filePath: string) => {
+    return previewCsv(filePath)
+  })
+
+  ipcMain.handle('csv:import', async (event, params: CsvImportParams) => {
+    const result = await importCsvToTable(params, (done) => {
+      event.sender.send('csv:progress', { done })
+    })
+    return result
   })
 }

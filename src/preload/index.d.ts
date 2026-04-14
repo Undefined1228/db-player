@@ -88,6 +88,27 @@ interface LockRow {
   blockingQuery: string | null
 }
 
+interface CsvPreviewResult {
+  headers: string[]
+  preview: Record<string, string>[]
+  totalEstimated: number
+}
+
+interface CsvImportParams {
+  connectionId: number
+  schemaName?: string
+  tableName: string
+  filePath: string
+  columnMapping: Record<string, string | null>
+  columnTypes: Record<string, string>
+  skipFirstRow: boolean
+  batchSize?: number
+}
+
+interface CsvProgressEvent {
+  done: number
+}
+
 interface TableStatRow {
   schema: string
   table: string
@@ -169,6 +190,11 @@ interface DbApi {
   killSession: (connectionId: number, sessionId: number, mode: 'cancel' | 'terminate') => Promise<{ success: boolean }>
   getLocks: (connectionId: number) => Promise<LockRow[]>
   getTableStats: (connectionId: number) => Promise<TableStatRow[]>
+  csvPickFile: () => Promise<string | null>
+  csvPreview: (filePath: string) => Promise<CsvPreviewResult>
+  csvImport: (params: CsvImportParams) => Promise<{ insertedRows: number }>
+  onCsvProgress: (callback: (data: CsvProgressEvent) => void) => void
+  offCsvProgress: (callback: (data: CsvProgressEvent) => void) => void
   getSchemaObjects: (connectionId: number, schemaName: string) => Promise<{
     tables: { name: string; columns: ColumnInfo[]; indexes: { name: string; unique: boolean; columns: string[] }[]; sequences: string[]; foreignKeys: FKInfo[] }[]
     views: { name: string; columns: ColumnInfo[] }[]

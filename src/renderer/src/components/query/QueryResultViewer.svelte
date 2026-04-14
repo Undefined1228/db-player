@@ -301,7 +301,7 @@
   }
 
   function escapeCsv(v: unknown): string {
-    const s = v === null || v === undefined ? '' : String(v)
+    const s = v === null || v === undefined ? '' : v instanceof Date ? v.toISOString() : String(v)
     return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
   }
 

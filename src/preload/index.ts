@@ -86,6 +86,16 @@ const api = {
     ipcRenderer.invoke('monitor:locks', connectionId),
   getTableStats: (connectionId: number) =>
     ipcRenderer.invoke('monitor:table-stats', connectionId),
+  csvPickFile: () =>
+    ipcRenderer.invoke('csv:pick-file'),
+  csvPreview: (filePath: string) =>
+    ipcRenderer.invoke('csv:preview', filePath),
+  csvImport: (params: Record<string, unknown>) =>
+    ipcRenderer.invoke('csv:import', params),
+  onCsvProgress: (callback: (data: { done: number }) => void) =>
+    ipcRenderer.on('csv:progress', (_e, data) => callback(data)),
+  offCsvProgress: (callback: (data: { done: number }) => void) =>
+    ipcRenderer.removeListener('csv:progress', callback as unknown as Parameters<typeof ipcRenderer.removeListener>[1]),
 }
 
 if (process.contextIsolated) {

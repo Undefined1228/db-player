@@ -11,6 +11,7 @@
     KeyRound,
   } from 'lucide-svelte'
   import SchemaObjectContextMenu from './SchemaObjectContextMenu.svelte'
+  import CsvImportDialog from '../table/CsvImportDialog.svelte'
   import * as ContextMenu from '$lib/components/ui/context-menu'
   import { openSqlEditor, selectData, viewDDL, copyDDL, copyDDLMultiple, dropObject, refreshSchemaObjects } from '$lib/actions/sidebar-actions'
 
@@ -99,6 +100,8 @@
   let selectedTables = $state<Set<string>>(new Set())
   let lastSelectedTable = $state<string | null>(null)
   let selectedView = $state<string | null>(null)
+  let csvImportOpen = $state(false)
+  let csvImportTarget = $state<{ tableName: string; columns: ColumnInfo[] } | null>(null)
 
   async function load(): Promise<void> {
     if (loaded) return
@@ -283,6 +286,7 @@
                 onDrop={() => dropObject({ connectionId, dbType, schemaName, objectName: table.name, objectType: 'table' })}
                 onRefresh={reloadObjects}
                 onAlter={() => onAlterTable({ tableName: table.name, columns: table.columns, foreignKeys: table.foreignKeys })}
+                onImportCsv={() => { csvImportTarget = { tableName: table.name, columns: table.columns }; csvImportOpen = true }}
               >
                 <div
                   class="flex w-full items-center rounded-md px-1 py-0.5 transition-colors
@@ -544,4 +548,16 @@
     </div>
   {/if}
 
+{/if}
+
+{#if csvImportOpen && csvImportTarget}
+  <CsvImportDialog
+    open={csvImportOpen}
+    {connectionId}
+    {schemaName}
+    tableName={csvImportTarget.tableName}
+    tableColumns={csvImportTarget.columns}
+    onImported={reloadObjects}
+    onClose={() => { csvImportOpen = false; csvImportTarget = null }}
+  />
 {/if}
