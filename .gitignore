@@ -23,6 +23,7 @@ npm-debug.log*
 # 개발 메모 / 내부 기획 문서
 remind.md
 plans/
+work-logs/
 
 # 에디터
 .vscode/
