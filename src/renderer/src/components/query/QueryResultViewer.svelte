@@ -545,6 +545,7 @@
                 </button>
                 <div
                   class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 {resizing?.col === col ? 'bg-primary/50' : ''}"
+                  role="presentation"
                   onmousedown={(e) => startResize(e, col, (e.currentTarget as HTMLElement).closest('th') as HTMLElement)}
                 ></div>
               </th>
@@ -589,6 +590,7 @@
                 >
                   <div
                     class="px-3 py-1.5 cursor-default select-none flex items-center gap-1.5 min-w-0"
+                    role="presentation"
                     onclick={() => { if (isJson) openJsonModal(col, value) }}
                   >
                     {#if value === null || value === undefined}
@@ -615,10 +617,12 @@
 {#if jsonModal.open}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    role="presentation"
     onclick={() => { jsonModal.open = false }}
   >
     <div
       class="relative flex w-[560px] max-w-[90vw] flex-col rounded-lg border border-border bg-background shadow-xl"
+      role="presentation"
       onclick={(e) => e.stopPropagation()}
     >
       <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
@@ -648,6 +652,7 @@
 {#if colContextMenu.open}
   <div
     class="fixed inset-0 z-40"
+    role="presentation"
     onclick={closeColContextMenu}
     oncontextmenu={(e) => { e.preventDefault(); closeColContextMenu() }}
   ></div>

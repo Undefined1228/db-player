@@ -1,8 +1,9 @@
 <script lang="ts">
   import { SquarePlus } from 'lucide-svelte'
   import ThemeToggle from './ThemeToggle.svelte'
+  import type { Snippet } from 'svelte'
 
-  let { onNewTab }: { onNewTab: () => void } = $props()
+  let { onNewTab, children }: { onNewTab: () => void; children?: Snippet } = $props()
 
   let appVersion = $state<string | null>(null)
   let updateInfo = $state<{ version: string; downloadUrl: string } | null>(null)
@@ -58,7 +59,7 @@
 {/if}
 <div class="flex h-10 items-center justify-between border-b border-border bg-background px-2">
   <div class="flex items-center gap-1">
-    <slot />
+    {@render children?.()}
   </div>
   <div class="flex items-center gap-1">
     <button

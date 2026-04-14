@@ -31,6 +31,7 @@
 {#if open}
     <div
         class="fixed inset-0 z-40"
+        role="presentation"
         onclick={onclose}
         oncontextmenu={(e) => { e.preventDefault(); onclose() }}
     ></div>

@@ -18,8 +18,8 @@
   let { objectType, dbType, children, onSelectData, onOpenEditor, onViewDDL, onDrop, onRefresh, onAlter, onCopyDDL }: Props =
     $props()
 
-  const ddlLabel = objectType === 'function' ? '함수 정의 보기' : 'DDL 보기'
-  const dropLabel =
+  const ddlLabel = $derived(objectType === 'function' ? '함수 정의 보기' : 'DDL 보기')
+  const dropLabel = $derived(
     objectType === 'table'
       ? '테이블 삭제'
       : objectType === 'function'
@@ -27,10 +27,12 @@
         : objectType === 'matview'
           ? '구체화된 뷰 삭제'
           : '뷰 삭제'
-
-  const showAlterSection = (objectType === 'table' && onAlter) ||
+  )
+  const showAlterSection = $derived(
+    (objectType === 'table' && onAlter) ||
     (objectType === 'view' && onAlter) ||
     (objectType === 'matview' && dbType === 'postgresql')
+  )
 </script>
 
 <ContextMenu.Root>

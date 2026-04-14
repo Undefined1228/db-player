@@ -21,10 +21,12 @@
 {#if open}
     <div
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        role="presentation"
         onclick={onclose}
     >
         <div
             class="relative flex w-[560px] max-w-[90vw] flex-col rounded-lg border border-border bg-background shadow-xl"
+            role="presentation"
             onclick={(e) => e.stopPropagation()}
         >
             <div class="flex items-center justify-between border-b border-border px-4 py-2.5">

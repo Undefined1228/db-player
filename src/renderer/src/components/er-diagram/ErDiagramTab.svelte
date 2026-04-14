@@ -226,9 +226,11 @@
       </div>
     </div>
 
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <svg
       bind:this={svgEl}
       class="flex-1 select-none"
+      role="application"
       style="cursor: {isPanning ? 'grabbing' : 'grab'}"
       onwheel={handleWheel}
       onmousedown={handleMouseDown}

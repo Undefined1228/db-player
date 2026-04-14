@@ -325,6 +325,7 @@
                         </button>
                         <div
                             class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 {resizing?.col === col ? 'bg-primary/50' : ''}"
+                            role="presentation"
                             onmousedown={(e) => onstartresize(e, col, (e.currentTarget as HTMLElement).closest('th') as HTMLElement)}
                         ></div>
                     </th>
@@ -524,6 +525,7 @@
                                 {@const isJson = !isDeleted && tryParseJson(value) !== null}
                                 <div
                                     class="px-3 py-1.5 cursor-default select-none flex items-center gap-1.5 min-w-0"
+                                    role="presentation"
                                     onclick={() => { if (isJson) onopenJsonModal(col, value) }}
                                 >
                                     {#if value === null || value === undefined}
